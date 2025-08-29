@@ -5,8 +5,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Society Dashboard - Community Ledger',
-  description: 'Community management dashboard for society leaders',
+  title: '🔍 ATS Financial Health Monitor - Transparent Society Management',
+  description: 'Complete transparency in your ATS financial well-being. Track income, expenses, and fund health with our comprehensive society dashboard.',
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
 }
 
