@@ -2,8 +2,6 @@ import { Suspense } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
@@ -12,9 +10,9 @@ import {
   IndianRupee, 
   Users, 
   Calendar,
-  Filter,
   Download,
-  Eye
+  Eye,
+  ArrowLeft
 } from 'lucide-react';
 import { db } from '@/lib/db';
 import { inr, formatNumber, formatDate, getMonthName, monthKey } from '@/lib/utils';
@@ -39,10 +37,6 @@ async function IncomeSourcesTable() {
             </CardDescription>
           </div>
           <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm">
-              <Filter className="mr-2 h-4 w-4" />
-              Filter
-            </Button>
             <Button variant="outline" size="sm">
               <Download className="mr-2 h-4 w-4" />
               Export
@@ -195,7 +189,6 @@ function IncomeTableSkeleton() {
           </div>
           <div className="flex space-x-2">
             <Skeleton className="h-9 w-20" />
-            <Skeleton className="h-9 w-20" />
           </div>
         </div>
       </CardHeader>
@@ -225,7 +218,18 @@ export default function IncomePage() {
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       {/* Header */}
-      <div className="flex items-center justify-between space-y-2">
+      <div className="space-y-4">
+        {/* Back Button - Separate row for mobile */}
+        <div className="flex justify-start">
+          <Link href="/dashboard">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+          </Link>
+        </div>
+        
+        {/* Title - Separate row for mobile */}
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Income Sources</h2>
           <p className="text-muted-foreground">
@@ -233,73 +237,6 @@ export default function IncomePage() {
           </p>
         </div>
       </div>
-
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <Select defaultValue="current-month">
-                <SelectTrigger>
-                  <SelectValue placeholder="Select period" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="current-month">Current Month</SelectItem>
-                  <SelectItem value="last-month">Last Month</SelectItem>
-                  <SelectItem value="current-quarter">Current Quarter</SelectItem>
-                  <SelectItem value="current-year">Current Financial Year</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="flex-1">
-              <Select defaultValue="all-towers">
-                <SelectTrigger>
-                  <SelectValue placeholder="Select tower" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all-towers">All Towers</SelectItem>
-                  <SelectItem value="1">Tower 1</SelectItem>
-                  <SelectItem value="2">Tower 2</SelectItem>
-                  <SelectItem value="3">Tower 3</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="flex-1">
-              <Select defaultValue="all-modes">
-                <SelectTrigger>
-                  <SelectValue placeholder="Payment mode" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all-modes">All Payment Modes</SelectItem>
-                  <SelectItem value="upi">UPI</SelectItem>
-                  <SelectItem value="transfer">Bank Transfer</SelectItem>
-                  <SelectItem value="cheque">Cheque</SelectItem>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="auto-debit">Auto Debit</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="flex-1">
-              <Select defaultValue="all-categories">
-                <SelectTrigger>
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all-categories">All Categories</SelectItem>
-                  <SelectItem value="maintenance">Maintenance</SelectItem>
-                  <SelectItem value="sinking-fund">Sinking Fund</SelectItem>
-                  <SelectItem value="amenity">Amenity</SelectItem>
-                  <SelectItem value="parking">Parking</SelectItem>
-                  <SelectItem value="penalties">Penalties</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Income Sources Table */}
       <Suspense fallback={<IncomeTableSkeleton />}>

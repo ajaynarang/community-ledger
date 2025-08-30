@@ -76,13 +76,18 @@ async function IncomeSourceDetail({ sourceId }: { sourceId: string }) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center space-x-4">
-        <Link href="/income">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Income
-          </Button>
-        </Link>
+      <div className="space-y-4">
+        {/* Back Button - Separate row for mobile */}
+        <div className="flex justify-start">
+          <Link href="/income">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+          </Link>
+        </div>
+        
+        {/* Title - Separate row for mobile */}
         <div>
           <h1 className="text-2xl font-bold">{source.category} Income</h1>
           <p className="text-muted-foreground">
@@ -144,48 +149,7 @@ async function IncomeSourceDetail({ sourceId }: { sourceId: string }) {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Tower-wise Contribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Tower-wise Contribution</CardTitle>
-            <CardDescription>
-              Revenue contribution by tower
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-72 flex items-center justify-center border rounded-lg bg-muted/10">
-              <div className="text-center">
-                <TrendingUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground">Tower-wise contribution chart</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Chart functionality coming soon
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Payment Mode Split */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Payment Mode Distribution</CardTitle>
-            <CardDescription>
-              Transaction count by payment method
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-72 flex items-center justify-center border rounded-lg bg-muted/10">
-              <div className="text-center">
-                <CreditCard className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground">Payment mode distribution chart</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Chart functionality coming soon
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        </div>
 
       {/* Recent Transactions */}
       <Card>

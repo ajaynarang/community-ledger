@@ -74,24 +74,27 @@ async function YearlyDataTable() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+      <div className="space-y-4">
+        {/* Back Button and Export - Separate row for mobile */}
+        <div className="flex items-center justify-between">
           <Link href="/dashboard">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
+              Back
             </Button>
           </Link>
-          <div>
-            <h1 className="text-3xl font-bold">📊 Financial Summary</h1>
-            <p className="text-muted-foreground">Yearly performance overview</p>
-          </div>
+          
+          <Button variant="outline">
+            <Download className="mr-2 h-4 w-4" />
+            Export Report
+          </Button>
         </div>
         
-        <Button variant="outline">
-          <Download className="mr-2 h-4 w-4" />
-          Export Report
-        </Button>
+        {/* Title - Separate row for mobile */}
+        <div>
+          <h1 className="text-3xl font-bold">📊 Financial Summary</h1>
+          <p className="text-muted-foreground">Yearly performance overview</p>
+        </div>
       </div>
 
       {/* Summary Cards */}

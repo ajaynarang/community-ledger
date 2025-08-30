@@ -111,13 +111,20 @@ export function SimpleDashboard({ monthlyData, last6MonthsData }: SimpleDashboar
       {/* Key Metrics - Simple and Clear */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Flats with Owner/Renter Breakdown */}
-        <ClickableCard
-          title="🏢 Total Flats"
-          value={formatNumber(monthlyData.totalUnits)}
-          subtitle={`${Math.round(monthlyData.totalUnits * 0.7)} owners • ${Math.round(monthlyData.totalUnits * 0.3)} renters`}
-          icon={Building2}
-          color="text-blue-600"
-        />
+        <Card className="hover:shadow-md transition-all duration-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">🏢 Total Flats</p>
+                <div className="flex items-center space-x-2">
+                  <p className="text-2xl font-bold text-blue-600">{formatNumber(monthlyData.totalUnits)}</p>
+                </div>
+                <p className="text-xs text-muted-foreground">{`${Math.round(monthlyData.totalUnits * 0.7)} owners • ${Math.round(monthlyData.totalUnits * 0.3)} renters`}</p>
+              </div>
+              <Building2 className="h-8 w-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Money In */}
         <ClickableCard

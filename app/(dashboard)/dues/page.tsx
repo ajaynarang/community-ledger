@@ -2,8 +2,8 @@ import { Suspense } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ArrowLeft, Search, AlertTriangle, CheckCircle, Clock, Phone } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ArrowLeft, Search, AlertTriangle, CheckCircle, Clock, Phone, Building, PiggyBank } from 'lucide-react';
 import { db } from '@/lib/db';
 import { inr, formatDate, getDaysDifference } from '@/lib/utils';
 import Link from 'next/link';
@@ -11,272 +11,402 @@ import Link from 'next/link';
 async function DuesDetails() {
   const duesAging = await db.getDuesAging();
   const units = await db.getUnits();
+  const invoices = await db.getInvoices();
+  const payments = await db.getPayments();
   
-  // Combine dues with unit information
-  const duesWithUnitInfo = duesAging.map(due => {
-    const unit = units.find(u => u.id === due.unitId);
-    const totalDue = due.currentDue + due.totalOverdue;
+  // Get current month for filtering
+  const currentDate = new Date();
+  const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+  
+  // Get invoices due in current month
+  const currentMonthInvoices = invoices.filter(inv => {
+    const dueDate = new Date(inv.dueDate);
+    const dueMonth = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}`;
+    return dueMonth === currentMonth;
+  });
+  
+  // Get payments made in current month
+  const currentMonthPayments = payments.filter(pay => {
+    const paymentDate = new Date(pay.date);
+    const paymentMonth = `${paymentDate.getFullYear()}-${String(paymentDate.getMonth() + 1).padStart(2, '0')}`;
+    return paymentMonth === currentMonth;
+  });
+
+  // Separate maintenance and sinking fund data
+  const maintenanceInvoices = currentMonthInvoices.filter(inv => inv.type === 'Maintenance');
+  const sinkingFundInvoices = currentMonthInvoices.filter(inv => inv.type === 'SinkingFund');
+  
+  const maintenancePayments = currentMonthPayments.filter(pay => {
+    const invoice = currentMonthInvoices.find(inv => inv.id === pay.againstInvoiceId);
+    return invoice && invoice.type === 'Maintenance';
+  });
+  
+  const sinkingFundPayments = currentMonthPayments.filter(pay => {
+    const invoice = currentMonthInvoices.find(inv => inv.id === pay.againstInvoiceId);
+    return invoice && invoice.type === 'SinkingFund';
+  });
+
+  // Calculate maintenance dues
+  const maintenanceDues = units.map(unit => {
+    const unitMaintenanceInvoices = maintenanceInvoices.filter(inv => inv.unitId === unit.id);
+    const unitMaintenancePayments = maintenancePayments.filter(pay => pay.unitId === unit.id);
     
-    // Calculate days overdue for the worst case
-    let daysOverdue = 0;
-    if (due.aging90plus > 0) daysOverdue = 120; // Assume 120+ days for 90+ bucket
-    else if (due.aging61to90 > 0) daysOverdue = 75;
-    else if (due.aging31to60 > 0) daysOverdue = 45;
-    else if (due.aging0to30 > 0) daysOverdue = 15;
+    const totalBilled = unitMaintenanceInvoices.reduce((sum, inv) => sum + inv.amount + inv.tax, 0);
+    const totalPaid = unitMaintenancePayments.reduce((sum, pay) => sum + pay.amount, 0);
+    const outstanding = totalBilled - totalPaid;
     
     return {
-      ...due,
+      unitId: unit.id,
       unit,
-      totalDue,
-      daysOverdue,
-      riskLevel: totalDue > 50000 ? 'high' : totalDue > 20000 ? 'medium' : 'low'
+      totalBilled,
+      totalPaid,
+      outstanding,
+      status: outstanding > 0 ? 'pending' : 'paid'
     };
   });
 
-  // Separate into categories
-  const unitsWithDues = duesWithUnitInfo.filter(d => d.totalDue > 0);
-  const paidUnits = duesWithUnitInfo.filter(d => d.totalDue === 0);
-  
-  // Sort by total due amount (highest first)
-  unitsWithDues.sort((a, b) => b.totalDue - a.totalDue);
+  // Calculate sinking fund dues
+  const sinkingFundDues = units.map(unit => {
+    const unitSinkingInvoices = sinkingFundInvoices.filter(inv => inv.unitId === unit.id);
+    const unitSinkingPayments = sinkingFundPayments.filter(pay => pay.unitId === unit.id);
+    
+    const totalBilled = unitSinkingInvoices.reduce((sum, inv) => sum + inv.amount + inv.tax, 0);
+    const totalPaid = unitSinkingPayments.reduce((sum, pay) => sum + pay.amount, 0);
+    const outstanding = totalBilled - totalPaid;
+    
+    return {
+      unitId: unit.id,
+      unit,
+      totalBilled,
+      totalPaid,
+      outstanding,
+      status: outstanding > 0 ? 'pending' : 'paid'
+    };
+  });
 
-  const totalOutstanding = unitsWithDues.reduce((sum, due) => sum + due.totalDue, 0);
-  const highRiskUnits = unitsWithDues.filter(d => d.riskLevel === 'high').length;
+  // Summary statistics
+  const maintenanceSummary = {
+    totalBilled: maintenanceInvoices.reduce((sum, inv) => sum + inv.amount + inv.tax, 0),
+    totalCollected: maintenancePayments.reduce((sum, pay) => sum + pay.amount, 0),
+    pendingUnits: maintenanceDues.filter(d => d.outstanding > 0).length,
+    paidUnits: maintenanceDues.filter(d => d.outstanding === 0).length,
+    collectionRate: maintenanceInvoices.reduce((sum, inv) => sum + inv.amount + inv.tax, 0) > 0 ? 
+      (maintenancePayments.reduce((sum, pay) => sum + pay.amount, 0) / maintenanceInvoices.reduce((sum, inv) => sum + inv.amount + inv.tax, 0)) * 100 : 0
+  };
+
+  const sinkingFundSummary = {
+    totalBilled: sinkingFundInvoices.reduce((sum, inv) => sum + inv.amount + inv.tax, 0),
+    totalCollected: sinkingFundPayments.reduce((sum, pay) => sum + pay.amount, 0),
+    pendingUnits: sinkingFundDues.filter(d => d.outstanding > 0).length,
+    paidUnits: sinkingFundDues.filter(d => d.outstanding === 0).length,
+    collectionRate: sinkingFundInvoices.reduce((sum, inv) => sum + inv.amount + inv.tax, 0) > 0 ? 
+      (sinkingFundPayments.reduce((sum, pay) => sum + pay.amount, 0) / sinkingFundInvoices.reduce((sum, inv) => sum + inv.amount + inv.tax, 0)) * 100 : 0
+  };
+
+  // Find units with mixed payment status
+  const mixedStatusUnits = units.filter(unit => {
+    const maintenanceDue = maintenanceDues.find(d => d.unitId === unit.id);
+    const sinkingDue = sinkingFundDues.find(d => d.unitId === unit.id);
+    return maintenanceDue && sinkingDue && 
+           ((maintenanceDue.status === 'paid' && sinkingDue.status === 'pending') ||
+            (maintenanceDue.status === 'pending' && sinkingDue.status === 'paid'));
+  });
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center space-x-4">
-        <Link href="/dashboard">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Button>
-        </Link>
+      <div className="space-y-4">
+        {/* Back Button - Separate row for mobile */}
+        <div className="flex justify-start">
+          <Link href="/dashboard">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+          </Link>
+        </div>
+        
+        {/* Title - Separate row for mobile */}
         <div>
-          <h1 className="text-3xl font-bold">⚠️ Who Owes Money?</h1>
-          <p className="text-muted-foreground">Outstanding dues by apartment</p>
+          <h1 className="text-3xl font-bold">⚠️ Dues Breakdown</h1>
+          <p className="text-muted-foreground">Maintenance vs Sinking Fund payments</p>
         </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* Overall Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-6 text-center">
-            <p className="text-sm text-muted-foreground">Total Outstanding</p>
-            <p className="text-2xl font-bold text-red-600">{inr(totalOutstanding)}</p>
+            <p className="text-sm text-muted-foreground">Total Maintenance Due</p>
+            <p className="text-2xl font-bold text-blue-600">{inr(maintenanceSummary.totalBilled - maintenanceSummary.totalCollected)}</p>
+            <p className="text-xs text-muted-foreground">{maintenanceSummary.pendingUnits} units pending</p>
           </CardContent>
         </Card>
         
         <Card>
           <CardContent className="p-6 text-center">
-            <p className="text-sm text-muted-foreground">Units with Dues</p>
-            <p className="text-2xl font-bold text-orange-600">{unitsWithDues.length}</p>
+            <p className="text-sm text-muted-foreground">Total Sinking Fund Due</p>
+            <p className="text-2xl font-bold text-purple-600">{inr(sinkingFundSummary.totalBilled - sinkingFundSummary.totalCollected)}</p>
+            <p className="text-xs text-muted-foreground">{sinkingFundSummary.pendingUnits} units pending</p>
           </CardContent>
         </Card>
         
         <Card>
           <CardContent className="p-6 text-center">
-            <p className="text-sm text-muted-foreground">Paid Up Units</p>
-            <p className="text-2xl font-bold text-green-600">{paidUnits.length}</p>
+            <p className="text-sm text-muted-foreground">Status Units</p>
+            <p className="text-2xl font-bold text-orange-600">{mixedStatusUnits.length}</p>
+            <p className="text-xs text-muted-foreground">Partial payments</p>
           </CardContent>
         </Card>
         
         <Card>
           <CardContent className="p-6 text-center">
-            <p className="text-sm text-muted-foreground">High Risk</p>
-            <p className="text-2xl font-bold text-red-600">{highRiskUnits}</p>
+            <p className="text-sm text-muted-foreground">Fully Paid Units</p>
+            <p className="text-2xl font-bold text-green-600">
+              {units.filter(unit => {
+                const maintenanceDue = maintenanceDues.find(d => d.unitId === unit.id);
+                const sinkingDue = sinkingFundDues.find(d => d.unitId === unit.id);
+                return maintenanceDue && sinkingDue && 
+                       maintenanceDue.status === 'paid' && sinkingDue.status === 'paid';
+              }).length}
+            </p>
+            <p className="text-xs text-muted-foreground">Both dues paid</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Payment Status Overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle>📊 Payment Status Overview</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span>Paid Units ({paidUnits.length})</span>
-              <div className="flex items-center space-x-2">
-                <div className="w-32 bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-green-500 h-2 rounded-full"
-                    style={{ width: `${(paidUnits.length / duesAging.length) * 100}%` }}
-                  />
-                </div>
-                <span className="text-sm font-medium">
-                  {((paidUnits.length / duesAging.length) * 100).toFixed(0)}%
-                </span>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between">
-              <span>Pending Units ({unitsWithDues.length})</span>
-              <div className="flex items-center space-x-2">
-                <div className="w-32 bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-red-500 h-2 rounded-full"
-                    style={{ width: `${(unitsWithDues.length / duesAging.length) * 100}%` }}
-                  />
-                </div>
-                <span className="text-sm font-medium">
-                  {((unitsWithDues.length / duesAging.length) * 100).toFixed(0)}%
-                </span>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Tabs for Maintenance and Sinking Fund */}
+      <Tabs defaultValue="maintenance" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="maintenance" className="flex items-center space-x-2">
+            <Building className="h-4 w-4" />
+            <span>Maintenance Dues</span>
+          </TabsTrigger>
+          <TabsTrigger value="sinking-fund" className="flex items-center space-x-2">
+            <PiggyBank className="h-4 w-4" />
+            <span>Sinking Fund Dues</span>
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Units with Outstanding Dues */}
-      {unitsWithDues.length > 0 && (
+        {/* Maintenance Tab */}
+        <TabsContent value="maintenance" className="space-y-4">
+          {/* Maintenance Summary */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Building className="h-5 w-5 text-blue-500" />
+                <span>Maintenance Collection Summary</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-blue-600">{inr(maintenanceSummary.totalBilled)}</p>
+                  <p className="text-sm text-muted-foreground">Total Billed</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-green-600">{inr(maintenanceSummary.totalCollected)}</p>
+                  <p className="text-sm text-muted-foreground">Total Collected</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold">{maintenanceSummary.collectionRate.toFixed(1)}%</p>
+                  <p className="text-sm text-muted-foreground">Collection Rate</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Maintenance Pending Units */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+                <span>Maintenance Pending ({maintenanceSummary.pendingUnits} units)</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {maintenanceDues
+                  .filter(d => d.outstanding > 0)
+                  .sort((a, b) => b.outstanding - a.outstanding)
+                  .slice(0, 15)
+                  .map((due) => (
+                    <div key={due.unitId} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50">
+                      <div className="flex items-center space-x-4">
+                        <div className="text-center">
+                          <p className="font-mono font-bold text-lg">{due.unitId}</p>
+                          <Badge variant={due.unit?.occupancy === 'Owner' ? 'default' : 'secondary'} className="text-xs">
+                            {due.unit?.occupancy}
+                          </Badge>
+                        </div>
+                        
+                        <div>
+                          <p className="font-medium">{due.unit?.ownerName}</p>
+                          {due.unit?.tenantName && (
+                            <p className="text-sm text-muted-foreground">Tenant: {due.unit.tenantName}</p>
+                          )}
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Phone className="h-3 w-3" />
+                            <span className="text-sm text-muted-foreground">{due.unit?.mobile}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-red-600">{inr(due.outstanding)}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Billed: {inr(due.totalBilled)} | Paid: {inr(due.totalPaid)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Sinking Fund Tab */}
+        <TabsContent value="sinking-fund" className="space-y-4">
+          {/* Sinking Fund Summary */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <PiggyBank className="h-5 w-5 text-purple-500" />
+                <span>Sinking Fund Collection Summary</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-purple-600">{inr(sinkingFundSummary.totalBilled)}</p>
+                  <p className="text-sm text-muted-foreground">Total Billed</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-green-600">{inr(sinkingFundSummary.totalCollected)}</p>
+                  <p className="text-sm text-muted-foreground">Total Collected</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold">{sinkingFundSummary.collectionRate.toFixed(1)}%</p>
+                  <p className="text-sm text-muted-foreground">Collection Rate</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sinking Fund Pending Units */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
+                <span>Sinking Fund Pending ({sinkingFundSummary.pendingUnits} units)</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {sinkingFundDues
+                  .filter(d => d.outstanding > 0)
+                  .sort((a, b) => b.outstanding - a.outstanding)
+                  .slice(0, 15)
+                  .map((due) => (
+                    <div key={due.unitId} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50">
+                      <div className="flex items-center space-x-4">
+                        <div className="text-center">
+                          <p className="font-mono font-bold text-lg">{due.unitId}</p>
+                          <Badge variant={due.unit?.occupancy === 'Owner' ? 'default' : 'secondary'} className="text-xs">
+                            {due.unit?.occupancy}
+                          </Badge>
+                        </div>
+                        
+                        <div>
+                          <p className="font-medium">{due.unit?.ownerName}</p>
+                          {due.unit?.tenantName && (
+                            <p className="text-sm text-muted-foreground">Tenant: {due.unit.tenantName}</p>
+                          )}
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Phone className="h-3 w-3" />
+                            <span className="text-sm text-muted-foreground">{due.unit?.mobile}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-red-600">{inr(due.outstanding)}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Billed: {inr(due.totalBilled)} | Paid: {inr(due.totalPaid)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Mixed Status Units */}
+      {mixedStatusUnits.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
-              <AlertTriangle className="h-5 w-5 text-red-500" />
-              <span>Apartments with Pending Dues</span>
+              <AlertTriangle className="h-5 w-5 text-orange-500" />
+              <span>Payment Status ({mixedStatusUnits.length} units)</span>
             </CardTitle>
             <CardDescription>
-              Sorted by amount owed (highest first)
+              Units that have paid one type of due but not the other
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {unitsWithDues.slice(0, 20).map((due) => (
-                <div key={due.unitId} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50">
-                  <div className="flex items-center space-x-4">
-                    <div className="text-center">
-                      <p className="font-mono font-bold text-lg">{due.unitId}</p>
-                      <Badge variant={due.unit?.occupancy === 'Owner' ? 'default' : 'secondary'} className="text-xs">
-                        {due.unit?.occupancy}
-                      </Badge>
+              {mixedStatusUnits.slice(0, 10).map((unit) => {
+                const maintenanceDue = maintenanceDues.find(d => d.unitId === unit.id);
+                const sinkingDue = sinkingFundDues.find(d => d.unitId === unit.id);
+                
+                return (
+                  <div key={unit.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50">
+                    <div className="flex items-center space-x-4">
+                      <div className="text-center">
+                        <p className="font-mono font-bold text-lg">{unit.id}</p>
+                        <Badge variant={unit.occupancy === 'Owner' ? 'default' : 'secondary'} className="text-xs">
+                          {unit.occupancy}
+                        </Badge>
+                      </div>
+                      
+                      <div>
+                        <p className="font-medium">{unit.ownerName}</p>
+                        {unit.tenantName && (
+                          <p className="text-sm text-muted-foreground">Tenant: {unit.tenantName}</p>
+                        )}
+                      </div>
                     </div>
-                    
-                    <div>
-                      <p className="font-medium">{due.unit?.ownerName}</p>
-                      {due.unit?.tenantName && (
-                        <p className="text-sm text-muted-foreground">Tenant: {due.unit.tenantName}</p>
-                      )}
-                      <div className="flex items-center space-x-2 mt-1">
-                        <Phone className="h-3 w-3" />
-                        <span className="text-sm text-muted-foreground">{due.unit?.mobile}</span>
+
+                    <div className="text-right space-y-2">
+                      <div className="flex items-center space-x-4">
+                                                 <div className="text-center">
+                           <Badge variant={maintenanceDue?.status === 'paid' ? 'default' : 'destructive'} className="text-xs">
+                             Maintenance: {maintenanceDue?.status === 'paid' ? '✓' : '✗'}
+                           </Badge>
+                           <p className="text-xs text-muted-foreground mt-1">
+                             {maintenanceDue && maintenanceDue.outstanding > 0 ? inr(maintenanceDue.outstanding) : 'Paid'}
+                           </p>
+                         </div>
+                         
+                         <div className="text-center">
+                           <Badge variant={sinkingDue?.status === 'paid' ? 'default' : 'destructive'} className="text-xs">
+                             Sinking Fund: {sinkingDue?.status === 'paid' ? '✓' : '✗'}
+                           </Badge>
+                           <p className="text-xs text-muted-foreground mt-1">
+                             {sinkingDue && sinkingDue.outstanding > 0 ? inr(sinkingDue.outstanding) : 'Paid'}
+                           </p>
+                         </div>
                       </div>
                     </div>
                   </div>
-
-                  <div className="text-right space-y-2">
-                    <p className="text-lg font-bold text-red-600">{inr(due.totalDue)}</p>
-                    
-                    <div className="flex items-center space-x-2">
-                      {due.daysOverdue > 0 && (
-                        <Badge variant="destructive" className="text-xs">
-                          <Clock className="mr-1 h-3 w-3" />
-                          {due.daysOverdue}+ days
-                        </Badge>
-                      )}
-                      
-                      <Badge 
-                        variant={
-                          due.riskLevel === 'high' ? 'destructive' : 
-                          due.riskLevel === 'medium' ? 'secondary' : 'outline'
-                        }
-                        className="text-xs"
-                      >
-                        {due.riskLevel.toUpperCase()} RISK
-                      </Badge>
-                    </div>
-
-                    <div className="text-xs text-muted-foreground">
-                      {due.escalationStage !== 'None' && (
-                        <span>Action: {due.escalationStage}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-            
-            {unitsWithDues.length > 20 && (
-              <div className="text-center mt-6">
-                <p className="text-sm text-muted-foreground">
-                  Showing top 20 of {unitsWithDues.length} units with dues
-                </p>
-              </div>
-            )}
           </CardContent>
         </Card>
       )}
-
-      {/* Well-Paid Units (Sample) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <CheckCircle className="h-5 w-5 text-green-500" />
-            <span>👏 Well-Paid Apartments</span>
-          </CardTitle>
-          <CardDescription>
-            Units with no outstanding dues (showing sample)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {paidUnits.slice(0, 9).map((due) => (
-              <div key={due.unitId} className="p-4 border rounded-lg bg-green-50">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-mono font-bold">{due.unitId}</p>
-                    <p className="text-sm text-muted-foreground">{due.unit?.ownerName}</p>
-                  </div>
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                </div>
-                <Badge variant="outline" className="text-xs mt-2">
-                  {due.unit?.occupancy} • Up to date
-                </Badge>
-              </div>
-            ))}
-          </div>
-          
-          {paidUnits.length > 9 && (
-            <div className="text-center mt-4">
-              <p className="text-sm text-muted-foreground">
-                ...and {paidUnits.length - 9} more units are up to date! 🎉
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>🚀 Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button variant="outline" className="h-16">
-              📧 Send Reminders<br/>
-              <span className="text-xs">to {unitsWithDues.length} units</span>
-            </Button>
-            
-            <Button variant="outline" className="h-16">
-              📞 Call High Risk<br/>
-              <span className="text-xs">{highRiskUnits} units</span>
-            </Button>
-            
-            <Button variant="outline" className="h-16">
-              📊 Download Report<br/>
-              <span className="text-xs">Excel format</span>
-            </Button>
-            
-            <Button variant="outline" className="h-16">
-              ⚖️ Legal Action<br/>
-              <span className="text-xs">for 90+ days</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
