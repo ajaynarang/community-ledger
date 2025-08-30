@@ -1,13 +1,7 @@
-'use client';
-
-import { Suspense, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { MonthSwitcher } from '@/components/MonthSwitcher';
-import { DashboardDataWrapper } from './DashboardDataWrapper';
-import { monthKey } from '@/lib/utils';
+import { db } from '@/lib/db';
+import { inr, formatPercent, formatNumber } from '@/lib/utils';
 import { 
   Building2, 
   Users, 
@@ -16,15 +10,14 @@ import {
   TrendingDown,
   Clock,
   Wallet,
-  AlertTriangle,
-  Download,
-  Bell,
-  Plus
+  AlertTriangle
 } from 'lucide-react';
-import { inr, formatPercent, formatNumber } from '@/lib/utils';
 
-async function DashboardKPIs({ selectedMonth }: { selectedMonth: string }) {
-  const { db } = await import('@/lib/db');
+interface DashboardKPIsWrapperProps {
+  selectedMonth: string;
+}
+
+export async function DashboardKPIsWrapper({ selectedMonth }: DashboardKPIsWrapperProps) {
   const kpis = await db.getKPIMetrics(selectedMonth);
   
   const kpiCards = [
@@ -135,89 +128,6 @@ async function DashboardKPIs({ selectedMonth }: { selectedMonth: string }) {
           </CardContent>
         </Card>
       ))}
-    </div>
-  );
-}
-
-function DashboardSkeleton() {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-      {Array.from({ length: 10 }).map((_, i) => (
-        <Card key={i}>
-          <CardHeader className="pb-2">
-            <Skeleton className="h-4 w-24" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-8 w-20 mb-1" />
-            <Skeleton className="h-3 w-32" />
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
-export default function DashboardPage() {
-  const currentMonth = monthKey(new Date());
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
-
-  return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      {/* Header */}
-      <div className="flex items-center justify-between space-y-2">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted-foreground">
-            Executive overview of your society's financial health
-          </p>
-        </div>
-        
-        {/* Quick Actions */}
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
-          <Button variant="outline" size="sm">
-            <Bell className="mr-2 h-4 w-4" />
-            Send Reminder
-          </Button>
-          <Button size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Expense
-          </Button>
-        </div>
-      </div>
-
-      {/* Month Switcher */}
-      <div className="flex justify-center">
-        <MonthSwitcher 
-          currentMonth={selectedMonth}
-          onMonthChange={setSelectedMonth}
-        />
-      </div>
-
-      {/* KPI Cards */}
-      <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardKPIs selectedMonth={selectedMonth} />
-      </Suspense>
-
-      {/* Dashboard Data */}
-      <Suspense fallback={<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i}>
-            <CardHeader>
-              <Skeleton className="h-6 w-48" />
-              <Skeleton className="h-4 w-32" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-64 w-full" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>}>
-        <DashboardDataWrapper selectedMonth={selectedMonth} />
-      </Suspense>
     </div>
   );
 }

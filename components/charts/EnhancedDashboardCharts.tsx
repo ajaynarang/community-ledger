@@ -15,17 +15,17 @@ import { SimpleBarChart } from './SimpleBarChart';
 async function BilledVsCollectedSummary() {
   const data = await db.getBilledVsCollectedChart(12);
   
-  const totalBilled = data.reduce((sum, item) => sum + (item.billed || 0), 0);
-  const totalCollected = data.reduce((sum, item) => sum + (item.collected || 0), 0);
+  const totalBilled = data.reduce((sum, item) => sum + Number(item.billed || 0), 0);
+  const totalCollected = data.reduce((sum, item) => sum + Number(item.collected || 0), 0);
   const avgEfficiency = data.length > 0 
-    ? data.reduce((sum, item) => sum + (item.efficiency || 0), 0) / data.length 
+    ? data.reduce((sum, item) => sum + Number(item.efficiency || 0), 0) / data.length 
     : 0;
 
   // Get last 6 months for trend display
   const recentData = data.slice(-6).map(item => ({
     label: item.period.split('-')[1] + '/' + item.period.split('-')[0].slice(-2),
-    value: item.collected || 0,
-    color: (item.efficiency || 0) >= 90 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'
+    value: Number(item.collected || 0),
+    color: (Number(item.efficiency || 0)) >= 90 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'
   }));
 
   return (

@@ -42,16 +42,10 @@ const navigation = [
     description: 'Apartment-wise collections'
   },
   {
-    name: 'Sinking Fund',
-    href: '/sinking-fund',
-    icon: Wallet,
-    description: 'Reserve fund tracker'
-  },
-  {
-    name: 'Reports',
-    href: '/reports',
+    name: 'Yearly Data',
+    href: '/yearly-data',
     icon: FileText,
-    description: 'Generate statements and summaries'
+    description: 'Annual financial summary and trends'
   }
 ];
 
