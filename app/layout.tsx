@@ -5,8 +5,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: '🔍 ATS Financial Health Monitor - Transparent Society Management',
-  description: 'Complete transparency in your ATS financial well-being. Track income, expenses, and fund health with our comprehensive society dashboard.',
+  title: 'SocietyScope - ATS Finance & Operations Dashboard',
+  description: 'Complete transparency in your housing society financial management. Track income, expenses, dues collection, and operational metrics with comprehensive analytics.',
 }
 
 export const viewport: Viewport = {
@@ -24,7 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} antialiased`}>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-background">
           {children}
         </div>
       </body>
