@@ -105,33 +105,33 @@ export const dashboardData: { [key: string]: DashboardData } = {
     month: 'September',
     year: 2025,
     summary: {
-      totalIncome: 920000,
-      totalExpenses: 780000,
-      netSurplus: 140000
+      totalIncome: 9.2,
+      totalExpenses: 10.5,
+      netSurplus: -1.3
     },
     incomeSources: [
-      { name: 'Maintenance', amount: 782000, percentage: 85, color: '#3b82f6' },
-      { name: 'Rentals', amount: 64400, percentage: 7, color: '#10b981' },
-      { name: 'Parking', amount: 46000, percentage: 5, color: '#f59e0b' },
-      { name: 'Others', amount: 27600, percentage: 3, color: '#8b5cf6' }
+      { name: 'Maintenance', amount: 7.82, percentage: 85, color: '#3b82f6' },
+      { name: 'Rentals', amount: 0.644, percentage: 7, color: '#10b981' },
+      { name: 'Parking', amount: 0.46, percentage: 5, color: '#f59e0b' },
+      { name: 'Others', amount: 0.276, percentage: 3, color: '#8b5cf6' }
     ],
     expenses: [
-      { category: 'Security & Housekeeping', amount: 195000, color: '#ef4444' },
-      { category: 'Electricity & Water', amount: 160000, color: '#f59e0b' },
-      { category: 'Repairs & Maintenance', amount: 130000, color: '#8b5cf6' },
-      { category: 'Salaries', amount: 210000, color: '#06b6d4' },
-      { category: 'Miscellaneous', amount: 85000, color: '#84cc16' }
+      { category: 'Security & Housekeeping', amount: 2.625, color: '#ef4444' },
+      { category: 'Electricity & Water', amount: 2.15, color: '#f59e0b' },
+      { category: 'Repairs & Maintenance', amount: 1.75, color: '#8b5cf6' },
+      { category: 'Salaries', amount: 2.825, color: '#06b6d4' },
+      { category: 'Miscellaneous', amount: 1.15, color: '#84cc16' }
     ],
     dues: {
-      collected: 828000,
-      pending: 92000,
-      total: 920000,
+      collected: 8.28,
+      pending: 0.92,
+      total: 9.2,
       pendingFlats: 25
     },
     funds: {
-      bankBalance: 390000,
-      sinkingFund: 640000,
-      emergencyFund: 140000
+      bankBalance: 3.9,
+      sinkingFund: 6.4,
+      emergencyFund: 1.4
     },
     notices: [
       {
