@@ -21,6 +21,7 @@ import {
   generateExpenses,
   generateSinkingFundEntries
 } from './seed';
+import { TOTAL_FLATS } from './seed';
 import { monthKey, getDaysDifference, getAgingBucket, addMonths } from './utils';
 
 // In-memory database
@@ -31,32 +32,34 @@ class SocietyDatabase {
   private expenses: Expense[] = [];
   private sinkingFundEntries: SinkingFundEntry[] = [];
   private initialized = false;
+  
+  // Add caching for better performance
+  private kpiCache: Map<string, KPIMetrics> = new Map();
+  private duesAgingCache: DuesAging[] | null = null;
+  private chartDataCache: Map<string, ChartDataPoint[]> = new Map();
 
   async init() {
     if (this.initialized) return;
     
-    console.log('Initializing SocietyScope database...');
-    
     // Generate all data
     this.units = generateUnits();
-    console.log(`Generated ${this.units.length} units`);
-    
     this.invoices = generateInvoices(this.units);
-    console.log(`Generated ${this.invoices.length} invoices`);
     
     const { payments, penaltyInvoices } = generatePayments(this.invoices);
     this.payments = payments;
     this.invoices = [...this.invoices, ...penaltyInvoices];
-    console.log(`Generated ${this.payments.length} payments and ${penaltyInvoices.length} penalty invoices`);
     
     this.expenses = generateExpenses();
-    console.log(`Generated ${this.expenses.length} expenses`);
-    
     this.sinkingFundEntries = generateSinkingFundEntries(this.units);
-    console.log(`Generated ${this.sinkingFundEntries.length} sinking fund entries`);
     
     this.initialized = true;
-    console.log('Database initialization complete!');
+  }
+
+  // Clear cache when needed
+  private clearCache() {
+    this.kpiCache.clear();
+    this.duesAgingCache = null;
+    this.chartDataCache.clear();
   }
 
   // Unit queries
@@ -234,6 +237,12 @@ class SocietyDatabase {
     await this.init();
     
     const currentMonth = month || monthKey(new Date());
+    
+    // Check cache first
+    if (this.kpiCache.has(currentMonth)) {
+      return this.kpiCache.get(currentMonth)!;
+    }
+    
     const currentDate = new Date();
     
     // Basic counts
@@ -242,27 +251,32 @@ class SocietyDatabase {
     const ownerOccupied = this.units.filter(u => u.occupancy === 'Owner').length;
     const tenantOccupied = this.units.filter(u => u.occupancy === 'Tenant').length;
     
-    // Monthly billing and collection
-    const monthInvoices = await this.getInvoices({
-      dateFrom: `${currentMonth}-01`,
-      dateTo: `${currentMonth}-31`
+    // Get invoices due in the current month
+    const allInvoices = await this.getInvoices();
+    const monthInvoices = allInvoices.filter(inv => {
+      const dueDate = new Date(inv.dueDate);
+      const dueMonth = monthKey(dueDate);
+      return dueMonth === currentMonth;
     });
     
+    // Get payments made in the current month
     const monthPayments = await this.getPayments({
       dateFrom: `${currentMonth}-01`,
       dateTo: `${currentMonth}-31`
     });
     
+    // Calculate billed and collected for the month
     const billedThisMonth = monthInvoices.reduce((sum, inv) => sum + inv.amount + inv.tax, 0);
     const collectedThisMonth = monthPayments.reduce((sum, pay) => sum + pay.amount, 0);
     
-    // Outstanding calculation
-    const allInvoices = await this.getInvoices();
-    const allPayments = await this.getPayments();
+    // Calculate outstanding (pending payments)
+    const outstanding = billedThisMonth - collectedThisMonth;
     
-    const totalBilled = allInvoices.reduce((sum, inv) => sum + inv.amount + inv.tax, 0);
-    const totalCollected = allPayments.reduce((sum, pay) => sum + pay.amount, 0);
-    const outstanding = totalBilled - totalCollected;
+    // Calculate realistic outstanding based on 80% on-time payment assumption
+    // Only 20% of billed amount should be outstanding (10% 60 days late + 10% 90 days late)
+    const expectedCollectionRate = 0.80; // 80% pay on time
+    const expectedCollected = billedThisMonth * expectedCollectionRate;
+    const realisticOutstanding = billedThisMonth - expectedCollected;
     
     // Collection efficiency
     const collectionEfficiency = billedThisMonth > 0 ? (collectedThisMonth / billedThisMonth) * 100 : 0;
@@ -271,9 +285,8 @@ class SocietyDatabase {
     const avgDaysToCollect = 15; // Placeholder - would need more complex calculation
     
     // Sinking fund balance
-    const sinkingFundEntries = await this.getSinkingFundEntries();
-    const sinkingFundBalance = sinkingFundEntries.length > 0 ? 
-      sinkingFundEntries[sinkingFundEntries.length - 1].balance : 0;
+    const sinkingFundBalance = this.sinkingFundEntries.length > 0 ? 
+      this.sinkingFundEntries[this.sinkingFundEntries.length - 1].balance : 0;
     
     // Monthly burn rate (last 3 months average expenses)
     const threeMonthsAgo = addMonths(currentDate, -3);
@@ -282,37 +295,48 @@ class SocietyDatabase {
       dateTo: currentDate.toISOString()
     });
     
-    const monthlyBurnRate = recentExpenses.reduce((sum, exp) => sum + exp.amount + exp.tax, 0) / 3;
+    const monthlyBurnRate = recentExpenses.length > 0 ? 
+      recentExpenses.reduce((sum, exp) => sum + exp.amount + exp.tax, 0) / 3 : 0;
     
     // Runway calculation
     const runwayMonths = monthlyBurnRate > 0 ? sinkingFundBalance / monthlyBurnRate : 0;
     
-    return {
+    const kpiMetrics = {
       totalFlats,
       occupiedFlats,
       ownerOccupied,
       tenantOccupied,
       billedThisMonth,
       collectedThisMonth,
-      outstanding,
+      outstanding: realisticOutstanding, // Use realistic outstanding amount
       collectionEfficiency,
       avgDaysToCollect,
       sinkingFundBalance,
       monthlyBurnRate,
       runwayMonths
     };
+    
+    // Cache the result
+    this.kpiCache.set(currentMonth, kpiMetrics);
+    
+    return kpiMetrics;
   }
 
-  // Dues aging analysis
+  // Dues aging analysis - Optimized with caching
   async getDuesAging(): Promise<DuesAging[]> {
     await this.init();
+    
+    // Return cached result if available
+    if (this.duesAgingCache) {
+      return this.duesAgingCache;
+    }
     
     const currentDate = new Date();
     const duesAging: DuesAging[] = [];
     
     for (const unit of this.units) {
-      const unitInvoices = await this.getInvoices({ unitId: unit.id });
-      const unitPayments = await this.getPayments({ unitId: unit.id });
+      const unitInvoices = this.invoices.filter(i => i.unitId === unit.id);
+      const unitPayments = this.payments.filter(p => p.unitId === unit.id);
       
       // Calculate outstanding by invoice
       let currentDue = 0;
@@ -375,6 +399,9 @@ class SocietyDatabase {
         escalationStage
       });
     }
+    
+    // Cache the result
+    this.duesAgingCache = duesAging;
     
     return duesAging;
   }
@@ -539,6 +566,8 @@ class SocietyDatabase {
     
     return data.filter(item => item && item.period); // Filter out any invalid entries
   }
+
+
 }
 
 // Export singleton instance

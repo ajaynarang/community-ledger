@@ -12,9 +12,9 @@ import type {
   UnitLedgerEntry,
   VendorSummary 
 } from './types';
-import { monthKey, addMonths, getDaysDifference } from './utils';
+import { monthKey, addMonths, getDaysDifference, getMonthName } from './utils';
 
-// Set seed for reproducible data
+// Set seed for reproducible data - This ensures consistent data generation
 faker.seed(4242);
 
 // Constants for data generation - Updated with realistic values
@@ -23,7 +23,7 @@ const FLOORS_PER_TOWER = 10;
 const UNITS_PER_FLOOR = 10;
 const BASE_MAINTENANCE = 7500; // Updated to ₹7500 as per user assumption
 const BASE_SINKING_FUND = 1000; // Updated to ₹1000 as per user assumption
-const TOTAL_FLATS = 1450; // Total flats as per user assumption
+export const TOTAL_FLATS = 1450; // Total flats as per user assumption
 
 // Expense categories and vendors
 const EXPENSE_CATEGORIES = {
@@ -50,15 +50,18 @@ const PAYMENT_MODE_WEIGHTS = [0.45, 0.30, 0.15, 0.05, 0.05]; // UPI dominant
 export function generateUnits(): Unit[] {
   const units: Unit[] = [];
   
-  // Calculate units per tower to reach 1450 total
-  const unitsPerTower = Math.ceil(TOTAL_FLATS / TOWERS.length);
+  // Calculate exact units per tower to reach exactly 1450 total
+  const regularTowers = TOWERS.filter(t => !t.startsWith('P'));
+  const parkingTowers = TOWERS.filter(t => t.startsWith('P'));
+  
+  // Distribute units: regular towers get more units, parking towers get fewer
+  const unitsPerRegularTower = Math.ceil((TOTAL_FLATS * 0.85) / regularTowers.length);
+  const unitsPerParkingTower = Math.ceil((TOTAL_FLATS * 0.15) / parkingTowers.length);
   
   TOWERS.forEach(tower => {
-    const unitsInTower = tower.startsWith('P') ? 
-      Math.ceil(unitsPerTower * 0.3) : // Parking towers have fewer units
-      unitsPerTower;
+    const unitsInTower = tower.startsWith('P') ? unitsPerParkingTower : unitsPerRegularTower;
     
-    for (let i = 1; i <= unitsInTower; i++) {
+    for (let i = 1; i <= unitsInTower && units.length < TOTAL_FLATS; i++) {
       const floor = Math.ceil(i / UNITS_PER_FLOOR);
       const unitNumber = i.toString().padStart(3, '0');
       const unitId = `${tower}-${unitNumber}` as UnitId;
@@ -98,25 +101,34 @@ export function generateUnits(): Unit[] {
     }
   });
   
+  // Ensure exactly 1450 units
+  if (units.length > TOTAL_FLATS) {
+    units.splice(TOTAL_FLATS);
+  }
+  
   return units;
 }
 
-// Generate invoices for the last 24 months
+// Generate invoices for the last 3 months
 export function generateInvoices(units: Unit[]): Invoice[] {
   const invoices: Invoice[] = [];
   const startDate = new Date();
-  startDate.setMonth(startDate.getMonth() - 24);
+  startDate.setMonth(startDate.getMonth() - 2); // Start from 2 months ago to include current month
   
-  for (let month = 0; month < 24; month++) {
+  let totalMaintenance = 0;
+  let totalSinkingFund = 0;
+  
+  for (let month = 0; month < 3; month++) {
     const invoiceDate = addMonths(startDate, month);
     const dueDate = new Date(invoiceDate);
     dueDate.setDate(10); // Due on 10th of each month
     
     units.forEach(unit => {
-      // Monthly maintenance invoice - Updated to ₹7500 average
-      const maintenanceVariance = faker.number.float({ min: -1500, max: 1500 });
-      const areaMultiplier = unit.areaSqft / 1500; // Normalize to 1500 sqft
-      const maintenanceAmount = Math.round((BASE_MAINTENANCE + maintenanceVariance) * areaMultiplier);
+      // Monthly maintenance invoice - Ensure ₹7500 average
+      const maintenanceVariance = faker.number.int({ min: -1000, max: 1000 });
+      // Simple approach: base amount + variance to ensure average is ₹7500
+      const maintenanceAmount = BASE_MAINTENANCE + maintenanceVariance;
+      totalMaintenance += maintenanceAmount;
       
       invoices.push({
         id: `INV-${unit.id}-${monthKey(invoiceDate)}-MAINT`,
@@ -129,9 +141,10 @@ export function generateInvoices(units: Unit[]): Invoice[] {
         status: 'Generated'
       });
       
-      // Sinking fund invoice - Updated to ₹1000 average
-      const sinkingVariance = faker.number.float({ min: -300, max: 300 });
-      const sinkingAmount = Math.round((BASE_SINKING_FUND + sinkingVariance) * areaMultiplier);
+      // Sinking fund invoice - Ensure ₹1000 average
+      const sinkingVariance = faker.number.int({ min: -200, max: 200 });
+      const sinkingAmount = BASE_SINKING_FUND + sinkingVariance;
+      totalSinkingFund += sinkingAmount;
       
       invoices.push({
         id: `INV-${unit.id}-${monthKey(invoiceDate)}-SINK`,
@@ -168,12 +181,12 @@ export function generateInvoices(units: Unit[]): Invoice[] {
   return invoices;
 }
 
-// Generate payments with realistic delays and penalties - Updated for realistic collection rates
+// Generate payments with realistic delays and penalties - Simplified and reliable
 export function generatePayments(invoices: Invoice[]): { payments: Payment[], penaltyInvoices: Invoice[] } {
   const payments: Payment[] = [];
   const penaltyInvoices: Invoice[] = [];
   
-  // Group invoices by month to ensure proper collection rates
+  // Group invoices by month
   const invoicesByMonth = new Map<string, Invoice[]>();
   invoices.forEach(invoice => {
     const monthKey = invoice.date.substring(0, 7); // YYYY-MM
@@ -189,109 +202,56 @@ export function generatePayments(invoices: Invoice[]): { payments: Payment[], pe
     const monthsAgo = (currentDate.getFullYear() - invoiceDate.getFullYear()) * 12 + 
                      (currentDate.getMonth() - invoiceDate.getMonth());
     
-    // Calculate expected collection for this month
-    const totalBilled = monthInvoices.reduce((sum, inv) => sum + inv.amount + inv.tax, 0);
-    let targetCollectionRate: number;
-    
+    // Determine collection rate based on how old the month is
+    let collectionRate: number;
     if (monthsAgo === 0) {
-      // Current month - 70% collection (deficit month)
-      targetCollectionRate = 0.70;
+      collectionRate = 0.70; // Current month - 70% collection (deficit month)
     } else if (monthsAgo === 1) {
-      // Last month - 85% collection
-      targetCollectionRate = 0.85;
+      collectionRate = 0.85; // Last month - 85% collection
     } else if (monthsAgo === 2) {
-      // Two months ago - 90% collection
-      targetCollectionRate = 0.90;
+      collectionRate = 0.90; // Two months ago - 90% collection
     } else {
-      // Older months - 85% collection
-      targetCollectionRate = 0.85;
+      collectionRate = 0.85; // Older months - 85% collection
     }
     
-    const targetCollection = totalBilled * targetCollectionRate;
-    let actualCollection = 0;
+    // Calculate how many invoices should be paid
+    const totalInvoices = monthInvoices.length;
+    const invoicesToPay = Math.floor(totalInvoices * collectionRate);
     
-    // Process invoices to meet target collection
-    monthInvoices.forEach(invoice => {
+    // Shuffle invoices and take the first N for payment
+    const shuffledInvoices = [...monthInvoices].sort(() => Math.random() - 0.5);
+    const invoicesToProcess = shuffledInvoices.slice(0, invoicesToPay);
+    
+    invoicesToProcess.forEach(invoice => {
       const totalInvoiceAmount = invoice.amount + invoice.tax;
       
-      // Determine if this invoice should be paid based on collection target
-      let shouldPay = false;
-      let paymentProbability: string;
-      
-      if (actualCollection < targetCollection) {
-        // Still need to collect more to meet target
-        if (monthsAgo === 0) {
-          // Current month - 70% on time, 20% late, 10% very late
-          paymentProbability = faker.helpers.weightedArrayElement([
-            { weight: 0.70, value: 'onTime' },
-            { weight: 0.20, value: 'late1to30' },
-            { weight: 0.08, value: 'late31to90' },
-            { weight: 0.02, value: 'veryLate' }
-          ]);
-        } else if (monthsAgo === 1) {
-          // Last month - 85% on time, 12% late, 3% very late
-          paymentProbability = faker.helpers.weightedArrayElement([
-            { weight: 0.85, value: 'onTime' },
-            { weight: 0.12, value: 'late1to30' },
-            { weight: 0.02, value: 'late31to90' },
-            { weight: 0.01, value: 'veryLate' }
-          ]);
-        } else {
-          // Older months - 85% on time, 8% late, 5% late, 2% very late
-          paymentProbability = faker.helpers.weightedArrayElement([
-            { weight: 0.85, value: 'onTime' },
-            { weight: 0.08, value: 'late1to30' },
-            { weight: 0.05, value: 'late31to90' },
-            { weight: 0.02, value: 'veryLate' }
-          ]);
-        }
-        
-        // Only skip payment for very late cases
-        if (paymentProbability !== 'veryLate' || !faker.datatype.boolean(0.3)) {
-          shouldPay = true;
-        }
-      } else {
-        // Already met target, reduce payment probability
-        paymentProbability = faker.helpers.weightedArrayElement([
-          { weight: 0.60, value: 'onTime' },
-          { weight: 0.25, value: 'late1to30' },
-          { weight: 0.10, value: 'late31to90' },
-          { weight: 0.05, value: 'veryLate' }
-        ]);
-        
-        if (paymentProbability !== 'veryLate' || !faker.datatype.boolean(0.5)) {
-          shouldPay = true;
-        }
-      }
-      
-      if (!shouldPay) {
-        return;
-      }
+      // Determine payment timing: 80% on time, 10% 60 days late, 10% 90 days late
+      const paymentTiming = faker.helpers.weightedArrayElement([
+        { weight: 0.80, value: 'onTime' },
+        { weight: 0.10, value: 'sixtyDays' },
+        { weight: 0.10, value: 'ninetyDays' }
+      ]);
       
       let paymentDate = new Date(invoice.dueDate);
       let penaltyAmount = 0;
       
-      switch (paymentProbability) {
+      switch (paymentTiming) {
         case 'onTime':
-          // Pay between due date - 10 days to due date + 5 days (most payments)
+          // Pay between due date - 10 days to due date + 5 days
           paymentDate.setDate(paymentDate.getDate() + faker.number.int({ min: -10, max: 5 }));
           break;
           
-        case 'late1to30':
-          const daysLate1 = faker.number.int({ min: 1, max: 30 });
-          paymentDate.setDate(paymentDate.getDate() + daysLate1);
-          penaltyAmount = Math.min(invoice.amount * 0.02, 500); // 2% penalty, max ₹500
-          break;
-          
-        case 'late31to90':
-          const daysLate2 = faker.number.int({ min: 31, max: 90 });
-          paymentDate.setDate(paymentDate.getDate() + daysLate2);
+        case 'sixtyDays':
+          // Pay 60 days late (55-65 days range)
+          const daysLate60 = faker.number.int({ min: 55, max: 65 });
+          paymentDate.setDate(paymentDate.getDate() + daysLate60);
           penaltyAmount = Math.min(invoice.amount * 0.05, 1000); // 5% penalty, max ₹1000
           break;
           
-        case 'veryLate':
-          const daysLate3 = faker.number.int({ min: 91, max: 180 });
-          paymentDate.setDate(paymentDate.getDate() + daysLate3);
+        case 'ninetyDays':
+          // Pay 90 days late (85-95 days range)
+          const daysLate90 = faker.number.int({ min: 85, max: 95 });
+          paymentDate.setDate(paymentDate.getDate() + daysLate90);
           penaltyAmount = Math.min(invoice.amount * 0.1, 2000); // 10% penalty, max ₹2000
           break;
       }
@@ -324,8 +284,7 @@ export function generatePayments(invoices: Invoice[]): { payments: Payment[], pe
         }))
       );
       
-      const totalAmount = invoice.amount + invoice.tax + penaltyAmount;
-      actualCollection += totalAmount;
+      const totalAmount = totalInvoiceAmount + penaltyAmount;
       
       payments.push({
         id: `PAY-${invoice.id}-${paymentDate.getTime()}`,
@@ -348,9 +307,14 @@ export function generatePayments(invoices: Invoice[]): { payments: Payment[], pe
 export function generateExpenses(): Expense[] {
   const expenses: Expense[] = [];
   const startDate = new Date();
-  startDate.setMonth(startDate.getMonth() - 24);
+  startDate.setMonth(startDate.getMonth() - 2); // Start from 2 months ago
   
-  for (let month = 0; month < 24; month++) {
+  // Calculate expected monthly income for reference
+  const expectedMonthlyIncome = TOTAL_FLATS * BASE_MAINTENANCE; // ~₹1.09 crore
+  const expectedExpenseRatio = 0.85; // Expenses should be 85% of income
+  const baseMonthlyExpense = expectedMonthlyIncome * expectedExpenseRatio; // ~₹92.5 lakhs
+  
+  for (let month = 0; month < 3; month++) {
     const expenseDate = addMonths(startDate, month);
     const monthNum = expenseDate.getMonth() + 1;
     const currentDate = new Date();
@@ -361,35 +325,41 @@ export function generateExpenses(): Expense[] {
     let monthlyExpenseBudget: number;
     
     if (monthsAgo === 0) {
-      // Current month - higher expenses (deficit month)
-      monthlyExpenseBudget = faker.number.int({ min: 10500000, max: 11200000 }); // ₹1.05-1.12 crore
+      // Current month - higher expenses (deficit month) - 95% of income
+      monthlyExpenseBudget = faker.number.int({ 
+        min: Math.round(expectedMonthlyIncome * 0.92), 
+        max: Math.round(expectedMonthlyIncome * 0.98) 
+      }); // ₹1.00-1.07 crore
     } else if (monthsAgo === 1) {
-      // Last month - normal expenses
-      monthlyExpenseBudget = faker.number.int({ min: 9200000, max: 9800000 }); // ₹92-98 lakhs
-    } else if (monthsAgo === 2) {
-      // Two months ago - slightly lower expenses
-      monthlyExpenseBudget = faker.number.int({ min: 8800000, max: 9400000 }); // ₹88-94 lakhs
+      // Last month - normal expenses - 85% of income
+      monthlyExpenseBudget = faker.number.int({ 
+        min: Math.round(baseMonthlyExpense * 0.95), 
+        max: Math.round(baseMonthlyExpense * 1.05) 
+      }); // ₹87.9-97.1 lakhs
     } else {
-      // Older months - standard range
-      monthlyExpenseBudget = faker.number.int({ min: 9200000, max: 9800000 }); // ₹92-98 lakhs
+      // Two months ago - slightly lower expenses - 82% of income
+      monthlyExpenseBudget = faker.number.int({ 
+        min: Math.round(expectedMonthlyIncome * 0.80), 
+        max: Math.round(expectedMonthlyIncome * 0.85) 
+      }); // ₹87.2-92.7 lakhs
     }
     
     // Generate expenses for each category with realistic proportions
     const categoryBudgets = {
-      'Security': 0.15,      // 15% - ₹13.8-14.7 lakhs
-      'Housekeeping': 0.08,  // 8% - ₹7.4-7.8 lakhs
-      'Electricity': 0.25,   // 25% - ₹23-24.5 lakhs
-      'Water': 0.05,         // 5% - ₹4.6-4.9 lakhs
-      'Diesel': 0.03,        // 3% - ₹2.8-2.9 lakhs
-      'Repairs': 0.12,       // 12% - ₹11-11.8 lakhs
-      'AMC': 0.08,           // 8% - ₹7.4-7.8 lakhs
-      'Insurance': 0.02,     // 2% - ₹1.8-2 lakhs
-      'Salaries': 0.15,      // 15% - ₹13.8-14.7 lakhs
-      'Admin': 0.03,         // 3% - ₹2.8-2.9 lakhs
-      'Waste': 0.02,         // 2% - ₹1.8-2 lakhs
-      'Internet': 0.01,      // 1% - ₹0.9-1 lakh
-      'Legal': 0.01,         // 1% - ₹0.9-1 lakh
-      'Landscaping': 0.02    // 2% - ₹1.8-2 lakhs
+      'Security': 0.15,      // 15% - ₹13.2-14.6 lakhs
+      'Housekeeping': 0.08,  // 8% - ₹7.0-7.8 lakhs
+      'Electricity': 0.25,   // 25% - ₹22.0-24.3 lakhs
+      'Water': 0.05,         // 5% - ₹4.4-4.9 lakhs
+      'Diesel': 0.03,        // 3% - ₹2.6-2.9 lakhs
+      'Repairs': 0.12,       // 12% - ₹10.5-11.6 lakhs
+      'AMC': 0.08,           // 8% - ₹7.0-7.8 lakhs
+      'Insurance': 0.02,     // 2% - ₹1.8-2.0 lakhs
+      'Salaries': 0.15,      // 15% - ₹13.2-14.6 lakhs
+      'Admin': 0.03,         // 3% - ₹2.6-2.9 lakhs
+      'Waste': 0.02,         // 2% - ₹1.8-2.0 lakhs
+      'Internet': 0.01,      // 1% - ₹0.9-1.0 lakh
+      'Legal': 0.01,         // 1% - ₹0.9-1.0 lakh
+      'Landscaping': 0.02    // 2% - ₹1.8-2.0 lakhs
     };
     
     Object.entries(EXPENSE_CATEGORIES).forEach(([category, vendors]) => {
@@ -459,7 +429,7 @@ export function generateSinkingFundEntries(units: Unit[]): SinkingFundEntry[] {
   let runningBalance = 15000000; // Starting balance of ₹1.5 crore (realistic for 1450 flats)
   
   const startDate = new Date();
-  startDate.setMonth(startDate.getMonth() - 24);
+  startDate.setMonth(startDate.getMonth() - 2); // Start from 2 months ago
   
   // Add opening balance entry
   entries.push({
@@ -471,7 +441,7 @@ export function generateSinkingFundEntries(units: Unit[]): SinkingFundEntry[] {
     balance: runningBalance
   });
   
-  for (let month = 0; month < 24; month++) {
+  for (let month = 0; month < 3; month++) {
     const entryDate = addMonths(startDate, month);
     
     // Monthly contributions from all units - Updated for ₹1000 average
@@ -544,10 +514,4 @@ export function generateSinkingFundEntries(units: Unit[]): SinkingFundEntry[] {
   return entries;
 }
 
-function getMonthName(monthKey: string) {
-  const [year, month] = monthKey.split('-');
-  return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('en-IN', {
-    month: 'long',
-    year: 'numeric'
-  });
-}
+// getMonthName function is imported from lib/utils.ts

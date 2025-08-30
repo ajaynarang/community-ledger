@@ -11,60 +11,62 @@ import Link from 'next/link';
 
 async function YearlyDataTable() {
   const currentDate = new Date();
+  
+  // Get data for last 3 months instead of 12 months
   const yearlyData = [];
   
-  // Get data for last 12 months
-  for (let i = 11; i >= 0; i--) {
+  for (let i = 2; i >= 0; i--) {
     const targetDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
     const monthKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
     
-    // Get monthly data
-    const monthInvoices = await db.getInvoices({
-      dateFrom: `${monthKey}-01`,
-      dateTo: `${monthKey}-31`
+    // Get invoices due in this month
+    const allInvoices = await db.getInvoices();
+    const monthInvoices = allInvoices.filter(inv => {
+      const dueDate = new Date(inv.dueDate);
+      const dueMonth = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}`;
+      return dueMonth === monthKey;
     });
     
+    // Get payments made in this month
     const monthPayments = await db.getPayments({
       dateFrom: `${monthKey}-01`,
       dateTo: `${monthKey}-31`
     });
     
+    // Get expenses for this month
     const monthExpenses = await db.getExpenses({
       dateFrom: `${monthKey}-01`,
       dateTo: `${monthKey}-31`
     });
     
-    // Calculate totals
-    const totalBilled = monthInvoices.reduce((sum, inv) => sum + inv.amount + inv.tax, 0);
-    const totalCollected = monthPayments.reduce((sum, pay) => sum + pay.amount, 0);
-    const totalExpenses = monthExpenses.reduce((sum, exp) => sum + exp.amount + exp.tax, 0);
-    const collectionRate = totalBilled > 0 ? (totalCollected / totalBilled) * 100 : 0;
-    const netSurplus = totalCollected - totalExpenses;
+    const billed = monthInvoices.reduce((sum, inv) => sum + inv.amount + inv.tax, 0);
+    const collected = monthPayments.reduce((sum, pay) => sum + pay.amount, 0);
+    const expenses = monthExpenses.reduce((sum, exp) => sum + exp.amount + exp.tax, 0);
+    const collectionRate = billed > 0 ? (collected / billed) * 100 : 0;
+    const netSurplus = collected - expenses;
     
-    // Get unique paying units
+    // Count paying units
     const payingUnits = new Set(monthPayments.map(p => p.unitId)).size;
-    const totalUnits = 1450; // From user assumption
     
     yearlyData.push({
       month: monthKey,
       monthName: getMonthName(monthKey),
-      totalBilled,
-      totalCollected,
-      totalExpenses,
+      billed,
+      collected,
+      expenses,
       collectionRate,
       netSurplus,
-      payingUnits,
-      collectionEfficiency: (payingUnits / totalUnits) * 100
+      payingUnits
     });
   }
   
-  // Calculate yearly totals
-  const yearlyTotals = yearlyData.reduce((acc, data) => ({
-    totalBilled: acc.totalBilled + data.totalBilled,
-    totalCollected: acc.totalCollected + data.totalCollected,
-    totalExpenses: acc.totalExpenses + data.totalExpenses,
-    netSurplus: acc.netSurplus + data.netSurplus
-  }), { totalBilled: 0, totalCollected: 0, totalExpenses: 0, netSurplus: 0 });
+  // Calculate totals
+  const yearlyTotals = {
+    totalBilled: yearlyData.reduce((sum, data) => sum + data.billed, 0),
+    totalCollected: yearlyData.reduce((sum, data) => sum + data.collected, 0),
+    totalExpenses: yearlyData.reduce((sum, data) => sum + data.expenses, 0),
+    netSurplus: yearlyData.reduce((sum, data) => sum + data.netSurplus, 0)
+  };
   
   const yearlyCollectionRate = yearlyTotals.totalBilled > 0 ? 
     (yearlyTotals.totalCollected / yearlyTotals.totalBilled) * 100 : 0;
@@ -81,8 +83,8 @@ async function YearlyDataTable() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-3xl font-bold">📊 Yearly Financial Summary</h1>
-            <p className="text-muted-foreground">Last 12 months performance overview</p>
+            <h1 className="text-3xl font-bold">📊 Financial Summary</h1>
+            <p className="text-muted-foreground">Yearly performance overview</p>
           </div>
         </div>
         
@@ -125,10 +127,10 @@ async function YearlyDataTable() {
         </Card>
       </div>
 
-      {/* Yearly Collection Rate */}
+      {/* Collection Rate */}
       <Card>
         <CardHeader>
-          <CardTitle>Yearly Collection Performance</CardTitle>
+          <CardTitle>Collection Performance</CardTitle>
           <CardDescription>Overall collection efficiency for the year</CardDescription>
         </CardHeader>
         <CardContent>
@@ -177,43 +179,20 @@ async function YearlyDataTable() {
                     <TableCell className="font-medium">
                       {data.monthName}
                     </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {inr(data.totalBilled)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-green-600">
-                      {inr(data.totalCollected)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-red-600">
-                      {inr(data.totalExpenses)}
-                    </TableCell>
-                    <TableCell className={`text-right font-mono ${data.netSurplus >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <TableCell className="text-right">{inr(data.billed)}</TableCell>
+                    <TableCell className="text-right text-green-600">{inr(data.collected)}</TableCell>
+                    <TableCell className="text-right text-red-600">{inr(data.expenses)}</TableCell>
+                    <TableCell className={`text-right font-bold ${data.netSurplus >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {inr(data.netSurplus)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <span className="font-medium">{data.collectionRate.toFixed(1)}%</span>
-                        {data.collectionRate > 90 ? (
-                          <TrendingUp className="h-4 w-4 text-green-600" />
-                        ) : data.collectionRate < 80 ? (
-                          <TrendingDown className="h-4 w-4 text-red-600" />
-                        ) : null}
-                      </div>
+                      <Badge variant={data.collectionRate >= 90 ? 'default' : data.collectionRate >= 80 ? 'secondary' : 'destructive'}>
+                        {data.collectionRate.toFixed(1)}%
+                      </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <span>{formatNumber(data.payingUnits)}</span>
-                        <span className="text-xs text-muted-foreground">
-                          ({data.collectionEfficiency.toFixed(1)}%)
-                        </span>
-                      </div>
-                    </TableCell>
+                    <TableCell className="text-right">{data.payingUnits}</TableCell>
                     <TableCell className="text-center">
-                      <Badge 
-                        variant={
-                          data.netSurplus >= 0 ? 'default' : 'destructive'
-                        }
-                        className="text-xs"
-                      >
+                      <Badge variant={data.netSurplus >= 0 ? 'default' : 'destructive'}>
                         {data.netSurplus >= 0 ? 'Surplus' : 'Deficit'}
                       </Badge>
                     </TableCell>
@@ -262,7 +241,7 @@ async function YearlyDataTable() {
                   </div>
                 ))}
               {yearlyData.filter(data => data.netSurplus < 0).length === 0 && (
-                <p className="text-sm text-muted-foreground">No deficit months this year! 🎉</p>
+                <p className="text-sm text-muted-foreground">No deficit months! 🎉</p>
               )}
             </div>
           </div>

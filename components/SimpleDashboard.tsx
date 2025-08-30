@@ -35,6 +35,7 @@ interface SimpleDashboardProps {
     sinkingFundCollected: number;
     topExpenseCategory: string;
     topExpenseAmount: number;
+    sinkingFundBalance: number;
   };
   last6MonthsData: Array<{
     month: string;
@@ -56,34 +57,39 @@ interface ClickableCardProps {
 }
 
 function ClickableCard({ title, value, subtitle, icon: Icon, color = 'text-primary', trend, onClick, href }: ClickableCardProps) {
-  const CardComponent = href ? Link : 'div';
-  const cardProps = href ? { href } : { onClick };
-  
-  return (
-    <CardComponent {...cardProps}>
-      <Card className="cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">{title}</p>
-              <div className="flex items-center space-x-2">
-                <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                {trend && (
-                  <Badge variant={trend === 'up' ? 'default' : 'secondary'} className="text-xs">
-                    {trend === 'up' ? '↗️' : '↘️'}
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">{subtitle}</p>
-            </div>
+  const cardContent = (
+    <Card className="cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.02]">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">{title}</p>
             <div className="flex items-center space-x-2">
-              <Icon className={`h-8 w-8 ${color}`} />
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <p className={`text-2xl font-bold ${color}`}>{value}</p>
+              {trend && (
+                <Badge variant={trend === 'up' ? 'default' : 'secondary'} className="text-xs">
+                  {trend === 'up' ? '↗️' : '↘️'}
+                </Badge>
+              )}
             </div>
+            <p className="text-xs text-muted-foreground">{subtitle}</p>
           </div>
-        </CardContent>
-      </Card>
-    </CardComponent>
+          <div className="flex items-center space-x-2">
+            <Icon className={`h-8 w-8 ${color}`} />
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  if (href) {
+    return <Link href={href}>{cardContent}</Link>;
+  }
+
+  return (
+    <div onClick={onClick}>
+      {cardContent}
+    </div>
   );
 }
 
@@ -103,7 +109,16 @@ export function SimpleDashboard({ monthlyData, last6MonthsData }: SimpleDashboar
       </div>
 
       {/* Key Metrics - Simple and Clear */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* Total Flats with Owner/Renter Breakdown */}
+        <ClickableCard
+          title="🏢 Total Flats"
+          value={formatNumber(monthlyData.totalUnits)}
+          subtitle={`${Math.round(monthlyData.totalUnits * 0.7)} owners • ${Math.round(monthlyData.totalUnits * 0.3)} renters`}
+          icon={Building2}
+          color="text-blue-600"
+        />
+
         {/* Money In */}
         <ClickableCard
           title="💰 Money Collected"

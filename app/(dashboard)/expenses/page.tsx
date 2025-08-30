@@ -2,37 +2,55 @@ import { Suspense } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Calendar, IndianRupee, TrendingDown, Building2 } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ArrowLeft, Calendar, IndianRupee, TrendingDown, Building2, Users, Eye, Download } from 'lucide-react';
 import { db } from '@/lib/db';
-import { inr, formatDate, monthKey, getMonthName } from '@/lib/utils';
+import { inr, formatDate, monthKey, getMonthName, addMonths } from '@/lib/utils';
 import Link from 'next/link';
 
 async function ExpensesDetails() {
-  const currentMonth = monthKey(new Date());
+  const currentDate = new Date();
+  
+  // Get expenses for last 3 months
+  const threeMonthsAgo = addMonths(currentDate, -2);
   const expenses = await db.getExpenses({
-    dateFrom: `${currentMonth}-01`,
-    dateTo: `${currentMonth}-31`
+    dateFrom: threeMonthsAgo.toISOString(),
+    dateTo: currentDate.toISOString()
   });
 
-  // Group expenses by category
+  // Group expenses by month and category
+  const expensesByMonth = new Map<string, any[]>();
   const categoryTotals = new Map<string, { total: number, count: number, vendors: Set<string> }>();
+  
   expenses.forEach(expense => {
     const total = expense.amount + expense.tax;
-    const key = expense.category;
+    const month = monthKey(new Date(expense.date));
+    const category = expense.category;
     
-    if (!categoryTotals.has(key)) {
-      categoryTotals.set(key, { total: 0, count: 0, vendors: new Set() });
+    // Group by month
+    if (!expensesByMonth.has(month)) {
+      expensesByMonth.set(month, []);
+    }
+    expensesByMonth.get(month)!.push(expense);
+    
+    // Group by category
+    if (!categoryTotals.has(category)) {
+      categoryTotals.set(category, { total: 0, count: 0, vendors: new Set() });
     }
     
-    const category = categoryTotals.get(key)!;
-    category.total += total;
-    category.count += 1;
-    category.vendors.add(expense.vendor);
+    const categoryData = categoryTotals.get(category)!;
+    categoryData.total += total;
+    categoryData.count += 1;
+    categoryData.vendors.add(expense.vendor);
   });
 
   const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount + expense.tax, 0);
   const sortedCategories = Array.from(categoryTotals.entries())
     .sort((a, b) => b[1].total - a[1].total);
+
+  // Calculate per apartment expense
+  const totalUnits = 1450; // From user assumption
+  const perApartmentExpense = totalExpenses / (totalUnits * 3); // Average per apartment per month
 
   // Category icons mapping
   const categoryIcons: Record<string, string> = {
@@ -52,53 +70,102 @@ async function ExpensesDetails() {
     'Landscaping': '🌱'
   };
 
+  // Get monthly totals
+  const monthlyTotals = Array.from(expensesByMonth.entries()).map(([month, monthExpenses]) => ({
+    month,
+    monthName: getMonthName(month),
+    total: monthExpenses.reduce((sum, exp) => sum + exp.amount + exp.tax, 0),
+    count: monthExpenses.length
+  })).sort((a, b) => b.month.localeCompare(a.month));
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center space-x-4">
-        <Link href="/dashboard">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold">💸 Where Did Our Money Go?</h1>
-          <p className="text-muted-foreground">{getMonthName(currentMonth)} - Expenses Breakdown</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Link href="/dashboard">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Dashboard
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold">💸 Where Did Our Money Go?</h1>
+            <p className="text-muted-foreground">Last 3 Months - Expenses Breakdown</p>
+          </div>
         </div>
+        
+        <Button variant="outline">
+          <Download className="mr-2 h-4 w-4" />
+          Export Report
+        </Button>
       </div>
 
-      {/* Summary Card */}
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <p className="text-sm text-muted-foreground">Total Spent (3 Months)</p>
+            <p className="text-2xl font-bold text-red-600">{inr(totalExpenses)}</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6 text-center">
+            <p className="text-sm text-muted-foreground">Average Monthly</p>
+            <p className="text-2xl font-bold">{inr(totalExpenses / 3)}</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6 text-center">
+            <p className="text-sm text-muted-foreground">Total Expenses</p>
+            <p className="text-2xl font-bold">{expenses.length}</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6 text-center">
+            <p className="text-sm text-muted-foreground">Per Apartment/Month</p>
+            <p className="text-2xl font-bold text-blue-600">{inr(perApartmentExpense)}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Monthly Breakdown */}
       <Card>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Total Spent This Month</p>
-              <p className="text-3xl font-bold text-red-600">{inr(totalExpenses)}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Number of Expenses</p>
-              <p className="text-3xl font-bold">{expenses.length}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Categories</p>
-              <p className="text-3xl font-bold">{categoryTotals.size}</p>
-            </div>
+        <CardHeader>
+          <CardTitle>Monthly Expense Breakdown</CardTitle>
+          <CardDescription>Total expenses for each of the last 3 months</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {monthlyTotals.map((monthData) => (
+              <div key={monthData.month} className="text-center p-4 border rounded-lg">
+                <p className="text-sm text-muted-foreground">{monthData.monthName}</p>
+                <p className="text-2xl font-bold text-red-600">{inr(monthData.total)}</p>
+                <p className="text-sm text-muted-foreground">{monthData.count} expenses</p>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
 
       {/* Category Breakdown */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Expense Categories</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {sortedCategories.map(([category, data]) => {
-            const percentage = (data.total / totalExpenses) * 100;
-            
-            return (
-              <Card key={category} className="hover:shadow-md transition-shadow cursor-pointer">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Expense Categories</CardTitle>
+          <CardDescription>Breakdown by expense category for the last 3 months</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {sortedCategories.map(([category, data]) => {
+              const percentage = (data.total / totalExpenses) * 100;
+              const perApartment = data.total / (totalUnits * 3);
+              
+              return (
+                <div key={category} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-3">
                       <span className="text-2xl">{categoryIcons[category] || '💰'}</span>
                       <div>
@@ -114,67 +181,96 @@ async function ExpensesDetails() {
                     </div>
                   </div>
                   
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-red-500 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Recent Expenses */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Expenses</CardTitle>
-          <CardDescription>Latest expenses for transparency</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {expenses.slice(0, 10).map((expense) => (
-              <div key={expense.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center space-x-4">
-                  <span className="text-xl">{categoryIcons[expense.category] || '💰'}</span>
-                  <div>
-                    <p className="font-medium">{expense.vendor}</p>
-                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      <span>{formatDate(expense.date)}</span>
-                      <Badge variant="outline" className="text-xs">
-                        {expense.category}
-                      </Badge>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Per Apartment (3 months):</span>
+                      <span className="font-medium">{inr(perApartment)}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-red-500 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${percentage}%` }}
+                      />
                     </div>
                   </div>
                 </div>
-                
-                <div className="text-right">
-                  <p className="font-bold">{inr(expense.amount + expense.tax)}</p>
-                  <Badge 
-                    variant={expense.status === 'Paid' ? 'default' : expense.status === 'Unpaid' ? 'destructive' : 'secondary'}
-                    className="text-xs"
-                  >
-                    {expense.status}
-                  </Badge>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
 
-      {/* Monthly Comparison */}
+      {/* Detailed Expense Table */}
       <Card>
         <CardHeader>
-          <CardTitle>💡 Did You Know?</CardTitle>
+          <CardTitle>Detailed Expense List</CardTitle>
+          <CardDescription>All expenses for the last 3 months</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Vendor</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Tax</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {expenses.slice(0, 50).map((expense) => (
+                  <TableRow key={expense.id}>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <Calendar className="h-3 w-3 text-muted-foreground" />
+                        <span>{formatDate(expense.date)}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <span>{categoryIcons[expense.category] || '💰'}</span>
+                        <span>{expense.category}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{expense.vendor}</TableCell>
+                    <TableCell className="text-right">{inr(expense.amount)}</TableCell>
+                    <TableCell className="text-right">{inr(expense.tax)}</TableCell>
+                    <TableCell className="text-right font-bold">{inr(expense.amount + expense.tax)}</TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={expense.status === 'Paid' ? 'default' : expense.status === 'Unpaid' ? 'destructive' : 'secondary'}
+                        className="text-xs"
+                      >
+                        {expense.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          {expenses.length > 50 && (
+            <div className="text-center mt-4">
+              <p className="text-sm text-muted-foreground">
+                Showing first 50 expenses. Total: {expenses.length} expenses
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Key Insights */}
+      <Card>
+        <CardHeader>
+          <CardTitle>💡 Key Insights</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
-              <h4 className="font-medium">Top 3 Expenses This Month:</h4>
+              <h4 className="font-medium">Top 3 Expense Categories:</h4>
               {sortedCategories.slice(0, 3).map(([category, data], index) => (
                 <div key={category} className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -188,13 +284,21 @@ async function ExpensesDetails() {
             </div>
             
             <div className="space-y-3">
-              <h4 className="font-medium">Per Apartment Cost:</h4>
-              <div className="text-2xl font-bold text-blue-600">
-                {inr(totalExpenses / 1450)}
+              <h4 className="font-medium">Cost Analysis:</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Per Apartment/Month:</span>
+                  <span className="font-bold">{inr(perApartmentExpense)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Total Apartments:</span>
+                  <span className="font-bold">{totalUnits}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Average Monthly:</span>
+                  <span className="font-bold text-red-600">{inr(totalExpenses / 3)}</span>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Average expense per apartment this month
-              </p>
             </div>
           </div>
         </CardContent>

@@ -1,158 +1,47 @@
 'use client';
 
-import { Suspense, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Suspense, useState, useCallback, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MonthSwitcher } from '@/components/MonthSwitcher';
-import { DashboardDataWrapper } from './DashboardDataWrapper';
+import { SimpleDashboard } from '@/components/SimpleDashboard';
 import { monthKey } from '@/lib/utils';
-import { 
-  Building2, 
-  Users, 
-  IndianRupee, 
-  TrendingUp, 
-  TrendingDown,
-  Clock,
-  Wallet,
-  AlertTriangle,
-  Download,
-  Bell,
-  Plus
-} from 'lucide-react';
-import { inr, formatPercent, formatNumber } from '@/lib/utils';
 
-async function DashboardKPIs({ selectedMonth }: { selectedMonth: string }) {
-  const { db } = await import('@/lib/db');
-  const kpis = await db.getKPIMetrics(selectedMonth);
-  
-  const kpiCards = [
-    {
-      title: 'Total Flats',
-      value: formatNumber(kpis.totalFlats),
-      icon: Building2,
-      description: `${kpis.occupiedFlats} occupied`,
-      trend: null
-    },
-    {
-      title: 'Owner vs Tenant',
-      value: `${kpis.ownerOccupied}/${kpis.tenantOccupied}`,
-      icon: Users,
-      description: 'Owner/Tenant split',
-      trend: null
-    },
-    {
-      title: 'Billed This Month',
-      value: inr(kpis.billedThisMonth),
-      icon: IndianRupee,
-      description: 'Current month billing',
-      trend: null
-    },
-    {
-      title: 'Collected This Month',
-      value: inr(kpis.collectedThisMonth),
-      icon: TrendingUp,
-      description: 'Payments received',
-      trend: null
-    },
-    {
-      title: 'Outstanding',
-      value: inr(kpis.outstanding),
-      icon: AlertTriangle,
-      description: 'Total pending dues',
-      trend: null,
-      variant: kpis.outstanding > 1000000 ? 'destructive' : 'secondary'
-    },
-    {
-      title: 'Collection Efficiency',
-      value: formatPercent(kpis.collectionEfficiency),
-      icon: TrendingUp,
-      description: 'This month performance',
-      trend: kpis.collectionEfficiency >= 90 ? 'up' : 'down'
-    },
-    {
-      title: 'Avg Days to Collect',
-      value: `${Math.round(kpis.avgDaysToCollect)} days`,
-      icon: Clock,
-      description: 'Average collection time',
-      trend: null
-    },
-    {
-      title: 'Sinking Fund Balance',
-      value: inr(kpis.sinkingFundBalance),
-      icon: Wallet,
-      description: 'Reserve fund available',
-      trend: null
-    },
-    {
-      title: 'Monthly Burn Rate',
-      value: inr(kpis.monthlyBurnRate),
-      icon: TrendingDown,
-      description: 'Average monthly expenses',
-      trend: null
-    },
-    {
-      title: 'Runway',
-      value: `${Math.round(kpis.runwayMonths)} months`,
-      icon: AlertTriangle,
-      description: 'At current burn rate',
-      trend: null,
-      variant: kpis.runwayMonths < 12 ? 'destructive' : 'default'
-    }
-  ];
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-      {kpiCards.map((kpi, index) => (
-        <Card key={index} className="relative">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {kpi.title}
-            </CardTitle>
-            <kpi.icon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-2">
-              <div className="text-2xl font-bold">{kpi.value}</div>
-              {kpi.trend && (
-                <Badge variant={kpi.trend === 'up' ? 'default' : 'secondary'}>
-                  {kpi.trend === 'up' ? '↗️' : '↘️'}
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {kpi.description}
-            </p>
-            {kpi.variant && (
-              <Badge 
-                variant={kpi.variant as any} 
-                className="absolute top-2 right-2 text-xs"
-              >
-                {kpi.variant === 'destructive' ? '⚠️' : '✓'}
-              </Badge>
-            )}
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
+interface DashboardData {
+  monthlyData: any;
+  last6MonthsData: any[];
 }
 
 function DashboardSkeleton() {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-      {Array.from({ length: 10 }).map((_, i) => (
-        <Card key={i}>
-          <CardHeader className="pb-2">
-            <Skeleton className="h-4 w-24" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-8 w-20 mb-1" />
-            <Skeleton className="h-3 w-32" />
-          </CardContent>
-        </Card>
-      ))}
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i}>
+            <CardHeader className="pb-2">
+              <Skeleton className="h-4 w-24" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-8 w-20 mb-1" />
+              <Skeleton className="h-3 w-32" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <Card key={i}>
+            <CardHeader>
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-4 w-32" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-64 w-full" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
@@ -160,6 +49,33 @@ function DashboardSkeleton() {
 export default function DashboardPage() {
   const currentMonth = monthKey(new Date());
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [isLoading, setIsLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+
+  const handleMonthChange = useCallback((month: string) => {
+    setIsLoading(true);
+    setSelectedMonth(month);
+  }, []);
+
+  // Load dashboard data
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        const response = await fetch(`/api/dashboard-data?month=${selectedMonth}`);
+        const data = await response.json();
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        setDashboardData(data);
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, [selectedMonth]);
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -171,53 +87,29 @@ export default function DashboardPage() {
             Executive overview of your society's financial health
           </p>
         </div>
-        
-        {/* Quick Actions */}
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
-          <Button variant="outline" size="sm">
-            <Bell className="mr-2 h-4 w-4" />
-            Send Reminder
-          </Button>
-          <Button size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Expense
-          </Button>
-        </div>
       </div>
 
       {/* Month Switcher */}
       <div className="flex justify-center">
-        <MonthSwitcher 
+        <MonthSwitcher
           currentMonth={selectedMonth}
-          onMonthChange={setSelectedMonth}
+          onMonthChange={handleMonthChange}
         />
       </div>
 
-      {/* KPI Cards */}
-      <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardKPIs selectedMonth={selectedMonth} />
-      </Suspense>
-
       {/* Dashboard Data */}
-      <Suspense fallback={<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i}>
-            <CardHeader>
-              <Skeleton className="h-6 w-48" />
-              <Skeleton className="h-4 w-32" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-64 w-full" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>}>
-        <DashboardDataWrapper selectedMonth={selectedMonth} />
-      </Suspense>
+      {isLoading ? (
+        <DashboardSkeleton />
+      ) : dashboardData ? (
+        <SimpleDashboard 
+          monthlyData={dashboardData.monthlyData} 
+          last6MonthsData={dashboardData.last6MonthsData} 
+        />
+      ) : (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Failed to load dashboard data</p>
+        </div>
+      )}
     </div>
   );
 }

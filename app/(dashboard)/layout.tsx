@@ -1,4 +1,5 @@
 import { Navigation } from '@/components/Navigation';
+import { MockDataBanner } from '@/components/MockDataBanner';
 
 export default function DashboardLayout({
   children,
@@ -11,7 +12,9 @@ export default function DashboardLayout({
       
       {/* Main Content */}
       <div className="md:pl-64">
-        <main className="flex-1">
+        <main className="flex-1 flex flex-col">
+          {/* Mock Data Banner */}
+          <MockDataBanner />
           {children}
         </main>
       </div>
