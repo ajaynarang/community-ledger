@@ -12,7 +12,7 @@ import {
   Wallet,
   FileText,
   Menu,
-  Building2
+  Eye
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
@@ -98,9 +98,9 @@ export function Navigation() {
         <div className="flex-1 flex flex-col min-h-0 border-r bg-card">
           <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
             <Link href="/dashboard" className="flex items-center flex-shrink-0 px-4 hover:bg-accent/50 rounded-lg transition-colors">
-              <Building2 className="h-8 w-8 text-primary" />
+              <Eye className="h-8 w-8 text-primary" />
               <div className="ml-3">
-                <h1 className="text-xl font-bold">SocietyScope</h1>
+                <h1 className="text-xl font-bold">Society Scope</h1>
                 <p className="text-xs text-muted-foreground">Finance & Operations</p>
               </div>
             </Link>
@@ -115,9 +115,9 @@ export function Navigation() {
       <div className="md:hidden">
         <div className="flex items-center justify-between p-4 border-b bg-card">
           <Link href="/dashboard" className="flex items-center hover:bg-accent/50 rounded-lg transition-colors p-2">
-            <Building2 className="h-6 w-6 text-primary" />
+            <Eye className="h-6 w-6 text-primary" />
             <div className="ml-2">
-              <h1 className="text-lg font-bold">SocietyScope</h1>
+              <h1 className="text-lg font-bold">Society Scope</h1>
             </div>
           </Link>
           
@@ -129,9 +129,9 @@ export function Navigation() {
             </SheetTrigger>
             <SheetContent side="left" className="w-72">
               <Link href="/dashboard" className="flex items-center mb-6 hover:bg-accent/50 rounded-lg transition-colors p-2">
-                <Building2 className="h-8 w-8 text-primary" />
+                <Eye className="h-8 w-8 text-primary" />
                 <div className="ml-3">
-                  <h1 className="text-xl font-bold">SocietyScope</h1>
+                  <h1 className="text-xl font-bold">Society Scope</h1>
                   <p className="text-xs text-muted-foreground">Finance & Operations</p>
                 </div>
               </Link>
