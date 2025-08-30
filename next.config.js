@@ -1,11 +1,4 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  // Remove experimental.appDir as it's no longer needed in Next.js 14
-  output: 'standalone',
-  trailingSlash: false,
-  images: {
-    unoptimized: true
-  }
+// next.config.js
+module.exports = {
+  reactStrictMode: true,
 }
-
-module.exports = nextConfig

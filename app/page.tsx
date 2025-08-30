@@ -75,7 +75,11 @@ export default function Dashboard() {
       <footer className="bg-white border-t border-gray-200 mt-12">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <p className="text-center text-sm text-gray-500">
-            Community Ledger Dashboard • Last updated: {new Date().toLocaleDateString()}
+            Community Ledger Dashboard • Last updated: {new Date().toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit'
+            })}
           </p>
         </div>
       </footer>
