@@ -5,7 +5,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'SocietyScope - ATS Finance & Operations Dashboard',
+  title: 'SocietyScope - Finance & Operations Dashboard',
   description: 'Complete transparency in your housing society financial management. Track income, expenses, dues collection, and operational metrics with comprehensive analytics.',
 }
 

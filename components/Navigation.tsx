@@ -97,13 +97,13 @@ export function Navigation() {
       <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
         <div className="flex-1 flex flex-col min-h-0 border-r bg-card">
           <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-            <div className="flex items-center flex-shrink-0 px-4">
+            <Link href="/dashboard" className="flex items-center flex-shrink-0 px-4 hover:bg-accent/50 rounded-lg transition-colors">
               <Building2 className="h-8 w-8 text-primary" />
               <div className="ml-3">
                 <h1 className="text-xl font-bold">SocietyScope</h1>
                 <p className="text-xs text-muted-foreground">Finance & Operations</p>
               </div>
-            </div>
+            </Link>
             <div className="mt-8 flex-1 px-4">
               <NavigationItems />
             </div>
@@ -114,12 +114,12 @@ export function Navigation() {
       {/* Mobile Navigation */}
       <div className="md:hidden">
         <div className="flex items-center justify-between p-4 border-b bg-card">
-          <div className="flex items-center">
+          <Link href="/dashboard" className="flex items-center hover:bg-accent/50 rounded-lg transition-colors p-2">
             <Building2 className="h-6 w-6 text-primary" />
             <div className="ml-2">
               <h1 className="text-lg font-bold">SocietyScope</h1>
             </div>
-          </div>
+          </Link>
           
           <Sheet>
             <SheetTrigger asChild>
@@ -128,13 +128,13 @@ export function Navigation() {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-72">
-              <div className="flex items-center mb-6">
+              <Link href="/dashboard" className="flex items-center mb-6 hover:bg-accent/50 rounded-lg transition-colors p-2">
                 <Building2 className="h-8 w-8 text-primary" />
                 <div className="ml-3">
                   <h1 className="text-xl font-bold">SocietyScope</h1>
                   <p className="text-xs text-muted-foreground">Finance & Operations</p>
                 </div>
-              </div>
+              </Link>
               <NavigationItems mobile />
             </SheetContent>
           </Sheet>

@@ -134,35 +134,35 @@ async function DuesDetails() {
       </div>
 
       {/* Overall Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Card>
-          <CardContent className="p-6 text-center">
+          <CardContent className="p-4 text-center">
             <p className="text-sm text-muted-foreground">Total Maintenance Due</p>
-            <p className="text-2xl font-bold text-blue-600">{inr(maintenanceSummary.totalBilled - maintenanceSummary.totalCollected)}</p>
+            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">{inr(maintenanceSummary.totalBilled - maintenanceSummary.totalCollected)}</p>
             <p className="text-xs text-muted-foreground">{maintenanceSummary.pendingUnits} units pending</p>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="p-6 text-center">
+          <CardContent className="p-4 text-center">
             <p className="text-sm text-muted-foreground">Total Sinking Fund Due</p>
-            <p className="text-2xl font-bold text-purple-600">{inr(sinkingFundSummary.totalBilled - sinkingFundSummary.totalCollected)}</p>
+            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-600">{inr(sinkingFundSummary.totalBilled - sinkingFundSummary.totalCollected)}</p>
             <p className="text-xs text-muted-foreground">{sinkingFundSummary.pendingUnits} units pending</p>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="p-6 text-center">
+          <CardContent className="p-4 text-center">
             <p className="text-sm text-muted-foreground">Status Units</p>
-            <p className="text-2xl font-bold text-orange-600">{mixedStatusUnits.length}</p>
+            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-orange-600">{mixedStatusUnits.length}</p>
             <p className="text-xs text-muted-foreground">Partial payments</p>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="p-6 text-center">
+          <CardContent className="p-4 text-center">
             <p className="text-sm text-muted-foreground">Fully Paid Units</p>
-            <p className="text-2xl font-bold text-green-600">
+            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">
               {units.filter(unit => {
                 const maintenanceDue = maintenanceDues.find(d => d.unitId === unit.id);
                 const sinkingDue = sinkingFundDues.find(d => d.unitId === unit.id);
@@ -231,31 +231,39 @@ async function DuesDetails() {
                   .sort((a, b) => b.outstanding - a.outstanding)
                   .slice(0, 15)
                   .map((due) => (
-                    <div key={due.unitId} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50">
+                    <div key={due.unitId} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                       <div className="flex items-center space-x-4">
-                        <div className="text-center">
-                          <p className="font-mono font-bold text-lg">{due.unitId}</p>
-                          <Badge variant={due.unit?.occupancy === 'Owner' ? 'default' : 'secondary'} className="text-xs">
+                        <div className="flex flex-col items-center">
+                          <p className="font-mono font-bold text-base">{due.unitId}</p>
+                          <Badge variant={due.unit?.occupancy === 'Owner' ? 'default' : 'secondary'} className="text-xs mt-1">
                             {due.unit?.occupancy}
                           </Badge>
                         </div>
                         
-                        <div>
-                          <p className="font-medium">{due.unit?.ownerName}</p>
-                          {due.unit?.tenantName && (
-                            <p className="text-sm text-muted-foreground">Tenant: {due.unit.tenantName}</p>
-                          )}
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Phone className="h-3 w-3" />
-                            <span className="text-sm text-muted-foreground">{due.unit?.mobile}</span>
+                        <div className="flex flex-col space-y-2">
+                          <div className="flex items-center space-x-4 text-sm">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-muted-foreground">Billed:</span>
+                              <span className="font-medium">{inr(due.totalBilled)}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-muted-foreground">Paid:</span>
+                              <span className="font-medium text-green-600">{inr(due.totalPaid)}</span>
+                            </div>
+                          </div>
+                          <div className="w-40 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-red-500 h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${Math.min((due.outstanding / due.totalBilled) * 100, 100)}%` }}
+                            />
                           </div>
                         </div>
                       </div>
 
                       <div className="text-right">
                         <p className="text-lg font-bold text-red-600">{inr(due.outstanding)}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Billed: {inr(due.totalBilled)} | Paid: {inr(due.totalPaid)}
+                        <p className="text-xs text-muted-foreground">
+                          {((due.outstanding / due.totalBilled) * 100).toFixed(1)}% pending
                         </p>
                       </div>
                     </div>
@@ -308,31 +316,39 @@ async function DuesDetails() {
                   .sort((a, b) => b.outstanding - a.outstanding)
                   .slice(0, 15)
                   .map((due) => (
-                    <div key={due.unitId} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50">
+                    <div key={due.unitId} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                       <div className="flex items-center space-x-4">
-                        <div className="text-center">
-                          <p className="font-mono font-bold text-lg">{due.unitId}</p>
-                          <Badge variant={due.unit?.occupancy === 'Owner' ? 'default' : 'secondary'} className="text-xs">
+                        <div className="flex flex-col items-center">
+                          <p className="font-mono font-bold text-base">{due.unitId}</p>
+                          <Badge variant={due.unit?.occupancy === 'Owner' ? 'default' : 'secondary'} className="text-xs mt-1">
                             {due.unit?.occupancy}
                           </Badge>
                         </div>
                         
-                        <div>
-                          <p className="font-medium">{due.unit?.ownerName}</p>
-                          {due.unit?.tenantName && (
-                            <p className="text-sm text-muted-foreground">Tenant: {due.unit.tenantName}</p>
-                          )}
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Phone className="h-3 w-3" />
-                            <span className="text-sm text-muted-foreground">{due.unit?.mobile}</span>
+                        <div className="flex flex-col space-y-2">
+                          <div className="flex items-center space-x-4 text-sm">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-muted-foreground">Billed:</span>
+                              <span className="font-medium">{inr(due.totalBilled)}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-muted-foreground">Paid:</span>
+                              <span className="font-medium text-green-600">{inr(due.totalPaid)}</span>
+                            </div>
+                          </div>
+                          <div className="w-40 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-purple-500 h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${Math.min((due.outstanding / due.totalBilled) * 100, 100)}%` }}
+                            />
                           </div>
                         </div>
                       </div>
 
                       <div className="text-right">
                         <p className="text-lg font-bold text-red-600">{inr(due.outstanding)}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Billed: {inr(due.totalBilled)} | Paid: {inr(due.totalPaid)}
+                        <p className="text-xs text-muted-foreground">
+                          {((due.outstanding / due.totalBilled) * 100).toFixed(1)}% pending
                         </p>
                       </div>
                     </div>
@@ -342,71 +358,6 @@ async function DuesDetails() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Mixed Status Units */}
-      {mixedStatusUnits.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <AlertTriangle className="h-5 w-5 text-orange-500" />
-              <span>Payment Status ({mixedStatusUnits.length} units)</span>
-            </CardTitle>
-            <CardDescription>
-              Units that have paid one type of due but not the other
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {mixedStatusUnits.slice(0, 10).map((unit) => {
-                const maintenanceDue = maintenanceDues.find(d => d.unitId === unit.id);
-                const sinkingDue = sinkingFundDues.find(d => d.unitId === unit.id);
-                
-                return (
-                  <div key={unit.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50">
-                    <div className="flex items-center space-x-4">
-                      <div className="text-center">
-                        <p className="font-mono font-bold text-lg">{unit.id}</p>
-                        <Badge variant={unit.occupancy === 'Owner' ? 'default' : 'secondary'} className="text-xs">
-                          {unit.occupancy}
-                        </Badge>
-                      </div>
-                      
-                      <div>
-                        <p className="font-medium">{unit.ownerName}</p>
-                        {unit.tenantName && (
-                          <p className="text-sm text-muted-foreground">Tenant: {unit.tenantName}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="text-right space-y-2">
-                      <div className="flex items-center space-x-4">
-                                                 <div className="text-center">
-                           <Badge variant={maintenanceDue?.status === 'paid' ? 'default' : 'destructive'} className="text-xs">
-                             Maintenance: {maintenanceDue?.status === 'paid' ? '✓' : '✗'}
-                           </Badge>
-                           <p className="text-xs text-muted-foreground mt-1">
-                             {maintenanceDue && maintenanceDue.outstanding > 0 ? inr(maintenanceDue.outstanding) : 'Paid'}
-                           </p>
-                         </div>
-                         
-                         <div className="text-center">
-                           <Badge variant={sinkingDue?.status === 'paid' ? 'default' : 'destructive'} className="text-xs">
-                             Sinking Fund: {sinkingDue?.status === 'paid' ? '✓' : '✗'}
-                           </Badge>
-                           <p className="text-xs text-muted-foreground mt-1">
-                             {sinkingDue && sinkingDue.outstanding > 0 ? inr(sinkingDue.outstanding) : 'Paid'}
-                           </p>
-                         </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ResponsiveTable, TableCellContent } from '@/components/ui/responsive-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -98,32 +99,32 @@ async function YearlyDataTable() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Card>
-          <CardContent className="p-6 text-center">
+          <CardContent className="p-4 text-center">
             <p className="text-sm text-muted-foreground">Total Billed (Year)</p>
-            <p className="text-2xl font-bold">{inr(yearlyTotals.totalBilled)}</p>
+            <p className="text-lg sm:text-xl lg:text-2xl font-bold">{inr(yearlyTotals.totalBilled)}</p>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="p-6 text-center">
+          <CardContent className="p-4 text-center">
             <p className="text-sm text-muted-foreground">Total Collected (Year)</p>
-            <p className="text-2xl font-bold text-green-600">{inr(yearlyTotals.totalCollected)}</p>
+            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">{inr(yearlyTotals.totalCollected)}</p>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="p-6 text-center">
+          <CardContent className="p-4 text-center">
             <p className="text-sm text-muted-foreground">Total Expenses (Year)</p>
-            <p className="text-2xl font-bold text-red-600">{inr(yearlyTotals.totalExpenses)}</p>
+            <p className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600">{inr(yearlyTotals.totalExpenses)}</p>
           </CardContent>
         </Card>
         
         <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-sm text-muted-foreground">Net Surplus (Year)</p>
-            <p className={`text-2xl font-bold ${yearlyTotals.netSurplus >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <CardContent className="p-4 text-center">
+            <p className="text-sm text-muted-foreground">Net (Year)</p>
+            <p className={`text-lg sm:text-xl lg:text-2xl font-bold ${yearlyTotals.netSurplus >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               {inr(yearlyTotals.netSurplus)}
             </p>
           </CardContent>
@@ -162,39 +163,46 @@ async function YearlyDataTable() {
           <CardDescription>Detailed monthly financial performance</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Month</TableHead>
-                  <TableHead className="text-right">Billed</TableHead>
-                  <TableHead className="text-right">Collected</TableHead>
-                  <TableHead className="text-right">Expenses</TableHead>
-                  <TableHead className="text-right">Net Surplus</TableHead>
-                  <TableHead className="text-right">Collection Rate</TableHead>
-                  <TableHead className="text-right">Paying Units</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-right hidden md:table-cell">Billed</TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">Collected</TableHead>
+                  <TableHead className="text-right hidden lg:table-cell">Expenses</TableHead>
+                  <TableHead className="text-right">Net</TableHead>
+                  <TableHead className="text-right hidden xl:table-cell">Collection Rate</TableHead>
+                  <TableHead className="text-right hidden lg:table-cell">Paying Units</TableHead>
+                  <TableHead className="text-center hidden xl:table-cell">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {yearlyData.map((data) => (
                   <TableRow key={data.month} className="hover:bg-muted/50">
                     <TableCell className="font-medium">
-                      {data.monthName}
+                      <div>
+                        <p className="text-sm">{data.monthName}</p>
+                        <div className="flex flex-col space-y-1 mt-2 md:hidden">
+                          <p className="text-xs text-muted-foreground">Collected: {inr(data.collected)}</p>
+                          <p className="text-xs text-muted-foreground">Expenses: {inr(data.expenses)}</p>
+                          <p className={`text-xs font-bold ${data.netSurplus >= 0 ? 'text-green-600' : 'text-red-600'}`}>Net: {inr(data.netSurplus)}</p>
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell className="text-right">{inr(data.billed)}</TableCell>
-                    <TableCell className="text-right text-green-600">{inr(data.collected)}</TableCell>
-                    <TableCell className="text-right text-red-600">{inr(data.expenses)}</TableCell>
-                    <TableCell className={`text-right font-bold ${data.netSurplus >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <TableCell className="text-right hidden md:table-cell text-sm">{inr(data.billed)}</TableCell>
+                    <TableCell className="text-right hidden sm:table-cell text-sm">{inr(data.collected)}</TableCell>
+                    <TableCell className="text-right hidden lg:table-cell text-sm">{inr(data.expenses)}</TableCell>
+                    <TableCell className={`text-right font-bold text-sm ${data.netSurplus >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {inr(data.netSurplus)}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right hidden xl:table-cell">
                       <Badge variant={data.collectionRate >= 90 ? 'default' : data.collectionRate >= 80 ? 'secondary' : 'destructive'}>
                         {data.collectionRate.toFixed(1)}%
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">{data.payingUnits}</TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-right hidden lg:table-cell text-sm">{data.payingUnits}</TableCell>
+                    <TableCell className="text-center hidden xl:table-cell">
                       <Badge variant={data.netSurplus >= 0 ? 'default' : 'destructive'}>
                         {data.netSurplus >= 0 ? 'Surplus' : 'Deficit'}
                       </Badge>

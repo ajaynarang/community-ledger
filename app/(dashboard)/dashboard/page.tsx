@@ -5,7 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MonthSwitcher } from '@/components/MonthSwitcher';
 import { SimpleDashboard } from '@/components/SimpleDashboard';
-import { monthKey } from '@/lib/utils';
+import { getMonthName, monthKey } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { Building2 } from 'lucide-react';
 
 interface DashboardData {
   monthlyData: any;
@@ -82,12 +84,14 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between space-y-2">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Society Financial Summary</h2>
           <p className="text-muted-foreground">
             Executive overview of your society's financial health
           </p>
         </div>
       </div>
+
+       
 
       {/* Month Switcher */}
       <div className="flex justify-center">

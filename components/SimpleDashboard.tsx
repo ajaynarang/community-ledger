@@ -65,11 +65,6 @@ function ClickableCard({ title, value, subtitle, icon: Icon, color = 'text-prima
             <p className="text-sm text-muted-foreground">{title}</p>
             <div className="flex items-center space-x-2">
               <p className={`text-2xl font-bold ${color}`}>{value}</p>
-              {trend && (
-                <Badge variant={trend === 'up' ? 'default' : 'secondary'} className="text-xs">
-                  {trend === 'up' ? '↗️' : '↘️'}
-                </Badge>
-              )}
             </div>
             <p className="text-xs text-muted-foreground">{subtitle}</p>
           </div>
@@ -98,15 +93,7 @@ export function SimpleDashboard({ monthlyData, last6MonthsData }: SimpleDashboar
   
   return (
     <div className="space-y-6">
-      {/* Month Header */}
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold">ATS Financial Summary</h1>
-        <p className="text-lg text-muted-foreground">{getMonthName(monthlyData.month)}</p>
-        <Badge variant="outline" className="text-sm">
-          <Building2 className="mr-1 h-3 w-3" />
-          {monthlyData.totalUnits} Total Apartments
-        </Badge>
-      </div>
+    
 
       {/* Key Metrics - Simple and Clear */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -148,14 +135,27 @@ export function SimpleDashboard({ monthlyData, last6MonthsData }: SimpleDashboar
         />
 
         {/* Surplus/Deficit */}
-        <ClickableCard
-          title={monthlyData.netSurplus >= 0 ? "💚 Surplus" : "❤️ Deficit"}
-          value={inr(Math.abs(monthlyData.netSurplus))}
-          subtitle={monthlyData.netSurplus >= 0 ? "Money saved this month" : "Overspent this month"}
-          icon={monthlyData.netSurplus >= 0 ? TrendingUp : AlertTriangle}
-          color={monthlyData.netSurplus >= 0 ? "text-green-600" : "text-red-600"}
-          trend={monthlyData.netSurplus >= 0 ? "up" : "down"}
-        />
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">{monthlyData.netSurplus >= 0 ? "💚 Surplus" : "⚠️ Deficit"}</p>
+                <div className="flex items-center space-x-2">
+                  <p className={`text-2xl font-bold ${monthlyData.netSurplus >= 0 ? "text-green-600" : "text-red-600"}`}>
+                    {inr(Math.abs(monthlyData.netSurplus))}
+                  </p>
+                </div>
+              </div>  
+              <div className="flex items-center space-x-2">
+                {monthlyData.netSurplus >= 0 ? (
+                  <TrendingUp className={`h-8 w-8 ${monthlyData.netSurplus >= 0 ? "text-green-600" : "text-red-600"}`} />
+                ) : (
+                  <AlertTriangle className={`h-8 w-8 ${monthlyData.netSurplus >= 0 ? "text-green-600" : "text-red-600"}`} />
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Pending Dues */}
         <ClickableCard
@@ -171,80 +171,85 @@ export function SimpleDashboard({ monthlyData, last6MonthsData }: SimpleDashboar
       {/* Monthly Breakdown - What Everyone Wants to Know */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Maintenance Collection Details */}
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => {}}>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>🏠 Maintenance Collection</span>
-              <Eye className="h-4 w-4 text-muted-foreground" />
-            </CardTitle>
-            <CardDescription>Who paid maintenance this month</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-2xl font-bold text-green-600">{inr(monthlyData.maintenancePaid)}</span>
-              <Badge variant="outline">{monthlyData.maintenanceUnits} flats paid</Badge>
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Payment Progress</span>
-                <span>{((monthlyData.maintenanceUnits / monthlyData.totalUnits) * 100).toFixed(0)}%</span>
-              </div>
-              <Progress value={(monthlyData.maintenanceUnits / monthlyData.totalUnits) * 100} className="h-3" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 text-center">
-              <div>
-                <p className="text-sm text-muted-foreground">Paid</p>
-                <p className="text-lg font-semibold text-green-600">{monthlyData.maintenanceUnits}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Pending</p>
-                <p className="text-lg font-semibold text-red-600">{monthlyData.totalUnits - monthlyData.maintenanceUnits}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Sinking Fund Status */}
-        <Card className="cursor-pointer hover:shadow-md transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>🏦 Sinking Fund</span>
-              <Eye className="h-4 w-4 text-muted-foreground" />
-            </CardTitle>
-            <CardDescription>Emergency & maintenance reserve</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-blue-600">{inr(monthlyData.sinkingFundCollected)}</p>
-              <p className="text-sm text-muted-foreground">Collected this month</p>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                <span className="text-sm font-medium">💰 Total Fund Balance</span>
-                <span className="font-bold text-blue-700">{inr(5000000)}</span>
+        <Link href="/income">
+          <Card className="cursor-pointer hover:shadow-md transition-shadow hover:scale-[1.02]">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>🏠 Maintenance Collection</span>
+                <Eye className="h-4 w-4 text-muted-foreground" />
+              </CardTitle>
+              <CardDescription>Who paid maintenance this month</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-2xl font-bold text-green-600">{inr(monthlyData.maintenancePaid)}</span>
+                <Badge variant="outline">{monthlyData.maintenanceUnits} flats paid</Badge>
               </div>
               
-              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                <span className="text-sm font-medium">📈 Monthly Growth</span>
-                <span className="font-bold text-green-700">+{inr(monthlyData.sinkingFundCollected)}</span>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Payment Progress</span>
+                  <span>{((monthlyData.maintenanceUnits / monthlyData.totalUnits) * 100).toFixed(0)}%</span>
+                </div>
+                <Progress value={(monthlyData.maintenanceUnits / monthlyData.totalUnits) * 100} className="h-3" />
               </div>
-            </div>
-          </CardContent>
-        </Card>
+
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <div>
+                  <p className="text-sm text-muted-foreground">Paid</p>
+                  <p className="text-lg font-semibold text-green-600">{monthlyData.maintenanceUnits}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Pending</p>
+                  <p className="text-lg font-semibold text-red-600">{monthlyData.totalUnits - monthlyData.maintenanceUnits}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* Sinking Fund Status */}
+        <Link href="/sinking-fund">
+          <Card className="cursor-pointer hover:shadow-md transition-shadow hover:scale-[1.02]">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>🏦 Sinking Fund</span>
+                <Eye className="h-4 w-4 text-muted-foreground" />
+              </CardTitle>
+              <CardDescription>Emergency & maintenance reserve</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-blue-600">{inr(monthlyData.sinkingFundCollected)}</p>
+                <p className="text-sm text-muted-foreground">Collected this month</p>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                  <span className="text-sm font-medium">💰 Total Fund Balance</span>
+                  <span className="font-bold text-blue-700">{inr(5000000)}</span>
+                </div>
+                
+                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                  <span className="text-sm font-medium">📈 Monthly Growth</span>
+                  <span className="font-bold text-green-700">+{inr(monthlyData.sinkingFundCollected)}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* 6-Month Trend - Simple Visual */}
-      <Card className="cursor-pointer hover:shadow-md transition-shadow">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>📊 Last 6 Months Trend</span>
-            <Eye className="h-4 w-4 text-muted-foreground" />
-          </CardTitle>
-          <CardDescription>Financial health over time</CardDescription>
-        </CardHeader>
+      <Link href="/yearly-data">
+        <Card className="cursor-pointer hover:shadow-md transition-shadow hover:scale-[1.02]">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>📊 Last 6 Months Trend</span>
+              <Eye className="h-4 w-4 text-muted-foreground" />
+            </CardTitle>
+            <CardDescription>Financial health over time</CardDescription>
+          </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {last6MonthsData.map((month, index) => {
@@ -302,33 +307,35 @@ export function SimpleDashboard({ monthlyData, last6MonthsData }: SimpleDashboar
           </div>
         </CardContent>
       </Card>
+      </Link>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Link href="/dues">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <Link href="/income">
           <Button variant="outline" className="w-full h-12">
-            <Users className="mr-2 h-4 w-4" />
-            Who Owes Money?
-          </Button>
-        </Link>
-        
-        <Link href="/expenses">
-          <Button variant="outline" className="w-full h-12">
-            <IndianRupee className="mr-2 h-4 w-4" />
-            Where's Money Going?
-          </Button>
-        </Link>
-        
-        <Link href="/income">
-          <Button variant="outline" className="w-full h-12">
-            <TrendingUp className="mr-2 h-4 w-4" />
+            <TrendingUp className=" h-4 w-4" />
             Collection Details
           </Button>
         </Link>
+
+        <Link href="/expenses">
+          <Button variant="outline" className="w-full h-12">
+            <IndianRupee className="h-4 w-2" />
+            Where's Money Going?
+          </Button>
+        </Link>
+
+        <Link href="/dues">
+          <Button variant="outline" className="w-full h-12">
+            <Users className=" h-4 w-4" />
+            Who Owes Money?
+          </Button>
+        </Link>
+       
         
         <Link href="/sinking-fund">
           <Button variant="outline" className="w-full h-12">
-            <Building2 className="mr-2 h-4 w-4" />
+            <Building2 className=" h-4 w-4" />
             Emergency Fund
           </Button>
         </Link>

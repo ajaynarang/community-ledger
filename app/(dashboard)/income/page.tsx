@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { ResponsiveTable, TableCellContent } from '@/components/ui/responsive-table';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
@@ -46,14 +47,14 @@ async function IncomeSourcesTable() {
       </CardHeader>
       <CardContent>
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center space-x-2">
                 <IndianRupee className="h-5 w-5 text-primary" />
-                <div>
+                <div className="flex-1">
                   <p className="text-sm text-muted-foreground">Total Revenue</p>
-                  <p className="text-2xl font-bold">{inr(totalAmount)}</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold">{inr(totalAmount)}</p>
                 </div>
               </div>
             </CardContent>
@@ -63,21 +64,21 @@ async function IncomeSourcesTable() {
             <CardContent className="p-4">
               <div className="flex items-center space-x-2">
                 <Users className="h-5 w-5 text-primary" />
-                <div>
+                <div className="flex-1">
                   <p className="text-sm text-muted-foreground">Total Transactions</p>
-                  <p className="text-2xl font-bold">{formatNumber(totalTxns)}</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold">{formatNumber(totalTxns)}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="sm:col-span-2 lg:col-span-1">
             <CardContent className="p-4">
               <div className="flex items-center space-x-2">
                 <TrendingUp className="h-5 w-5 text-primary" />
-                <div>
+                <div className="flex-1">
                   <p className="text-sm text-muted-foreground">Avg Transaction</p>
-                  <p className="text-2xl font-bold">
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold">
                     {totalTxns > 0 ? inr(totalAmount / totalTxns) : inr(0)}
                   </p>
                 </div>
@@ -87,16 +88,16 @@ async function IncomeSourcesTable() {
         </div>
 
         {/* Income Sources Table */}
-        <div className="rounded-md border">
+        <div className="rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Source Category</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-right">Transactions</TableHead>
-                <TableHead className="text-right">Avg Ticket</TableHead>
-                <TableHead>Payment Modes</TableHead>
-                <TableHead className="text-right">Variance</TableHead>
+                <TableHead className="text-right hidden md:table-cell">Amount</TableHead>
+                <TableHead className="text-right hidden sm:table-cell">Transactions</TableHead>
+                <TableHead className="text-right hidden lg:table-cell">Avg Ticket</TableHead>
+                <TableHead className="hidden lg:table-cell">Payment Modes</TableHead>
+                <TableHead className="text-right hidden xl:table-cell">Variance</TableHead>
                 <TableHead className="text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -116,22 +117,26 @@ async function IncomeSourcesTable() {
                     <TableRow key={source.id} className="hover:bg-muted/50">
                       <TableCell className="font-medium">
                         <div>
-                          <p>{source.category}</p>
+                          <p className="text-sm sm:text-base">{source.category}</p>
                           {source.subCategory && (
                             <p className="text-xs text-muted-foreground">{source.subCategory}</p>
                           )}
+                          <div className="flex flex-col space-y-1 mt-2 md:hidden">
+                            <p className="text-sm font-bold text-green-600">{inr(source.amount)}</p>
+                            <p className="text-xs text-muted-foreground">{formatNumber(source.txns)} transactions</p>
+                          </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right font-mono hidden md:table-cell">
                         {inr(source.amount)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right hidden sm:table-cell">
                         {formatNumber(source.txns)}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right font-mono hidden lg:table-cell">
                         {inr(source.avgTicket)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <div className="flex items-center space-x-1">
                           <Badge variant="outline" className="text-xs">
                             {topPaymentMode?.[0] || 'N/A'}: {topPaymentMode?.[1] || 0}
@@ -143,7 +148,7 @@ async function IncomeSourcesTable() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right hidden xl:table-cell">
                         <div className="flex items-center justify-end space-x-1">
                           {source.variance !== 0 && (
                             <>

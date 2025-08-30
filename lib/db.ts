@@ -55,6 +55,20 @@ class SocietyDatabase {
     this.initialized = true;
   }
 
+  // Reset database to regenerate data
+  async reset() {
+    this.units = [];
+    this.invoices = [];
+    this.payments = [];
+    this.expenses = [];
+    this.sinkingFundEntries = [];
+    this.initialized = false;
+    this.clearCache();
+    
+    // Regenerate data
+    await this.init();
+  }
+
   // Clear cache when needed
   private clearCache() {
     this.kpiCache.clear();

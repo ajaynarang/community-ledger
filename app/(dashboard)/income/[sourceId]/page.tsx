@@ -133,78 +133,10 @@ async function IncomeSourceDetail({ sourceId }: { sourceId: string }) {
             </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-2">
-              <Building2 className="h-5 w-5 text-primary" />
-              <div>
-                <p className="text-sm text-muted-foreground">Contributing Towers</p>
-                <p className="text-2xl font-bold">{towerData.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        </div>
-
-      {/* Recent Transactions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Transactions</CardTitle>
-          <CardDescription>
-            Latest payments for this income source
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Unit</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Payment Mode</TableHead>
-                  <TableHead>Transaction Ref</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sourcePayments.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      No transactions found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  sourcePayments.map((payment) => (
-                    <TableRow key={payment.id}>
-                      <TableCell>{formatDate(payment.date)}</TableCell>
-                      <TableCell className="font-mono">{payment.unitId}</TableCell>
-                      <TableCell className="font-mono">{inr(payment.amount)}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{payment.mode}</Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {payment.transactionRef || '-'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="default">Completed</Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Top Contributing Units */}
-      <Card>
+   {/* Top Contributing Units */}
+   <Card>
         <CardHeader>
           <CardTitle>Top Contributing Units</CardTitle>
           <CardDescription>
@@ -234,6 +166,80 @@ async function IncomeSourceDetail({ sourceId }: { sourceId: string }) {
           </div>
         </CardContent>
       </Card>
+      {/* Recent Transactions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Transactions</CardTitle>
+          <CardDescription>
+            Latest payments for this income source
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="hidden sm:table-cell">Unit</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="hidden md:table-cell">Payment Mode</TableHead>
+                  <TableHead className="hidden lg:table-cell">Transaction Ref</TableHead>
+                  <TableHead className="hidden md:table-cell">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sourcePayments.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      No transactions found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sourcePayments.map((payment) => (
+                    <TableRow key={payment.id}>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Calendar className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-sm">{formatDate(payment.date)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell font-mono text-sm">{payment.unitId}</TableCell>
+                      <TableCell className="text-right font-bold">
+                        <div>
+                          <p className="text-sm">{inr(payment.amount)}</p>
+                          <div className="flex flex-col space-y-1 mt-1 sm:hidden">
+                            <p className="text-xs text-muted-foreground">Unit: {payment.unitId}</p>
+                            <p className="text-xs text-muted-foreground">Mode: {payment.mode}</p>
+                            <p className="text-xs text-muted-foreground">Status: Completed</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Badge variant="outline" className="text-xs">{payment.mode}</Badge>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell font-mono text-xs">
+                        {payment.transactionRef || '-'}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <Badge variant="default" className="text-xs">Completed</Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          {sourcePayments.length > 20 && (
+            <div className="text-center mt-4">
+              <p className="text-sm text-muted-foreground">
+                Showing first 20 transactions. Total: {sourcePayments.length} transactions
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+   
     </div>
   );
 }

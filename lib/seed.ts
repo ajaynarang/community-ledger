@@ -197,21 +197,22 @@ export function generatePayments(invoices: Invoice[]): { payments: Payment[], pe
   });
   
   invoicesByMonth.forEach((monthInvoices, monthKey) => {
-    const invoiceDate = new Date(monthKey + '-01');
-    const currentDate = new Date();
-    const monthsAgo = (currentDate.getFullYear() - invoiceDate.getFullYear()) * 12 + 
-                     (currentDate.getMonth() - invoiceDate.getMonth());
-    
-    // Determine collection rate based on how old the month is
+    // Determine collection rate based on specific month
     let collectionRate: number;
-    if (monthsAgo === 0) {
-      collectionRate = 0.70; // Current month - 70% collection (deficit month)
-    } else if (monthsAgo === 1) {
-      collectionRate = 0.85; // Last month - 85% collection
-    } else if (monthsAgo === 2) {
-      collectionRate = 0.90; // Two months ago - 90% collection
+    
+    // Extract month from monthKey (format: YYYY-MM)
+    const month = monthKey.split('-')[1];
+    const year = monthKey.split('-')[0];
+    
+    // Set specific collection rates for each month
+    if (month === '07') { // July
+      collectionRate = 0.70; // Deficit month - 70% collection
+    } else if (month === '08') { // August
+      collectionRate = 0.95; // Surplus month - 95% collection
+    } else if (month === '06') { // June
+      collectionRate = 0.92; // Surplus month - 92% collection
     } else {
-      collectionRate = 0.85; // Older months - 85% collection
+      collectionRate = 0.85; // Default for other months
     }
     
     // Calculate how many invoices should be paid
@@ -317,31 +318,36 @@ export function generateExpenses(): Expense[] {
   for (let month = 0; month < 3; month++) {
     const expenseDate = addMonths(startDate, month);
     const monthNum = expenseDate.getMonth() + 1;
-    const currentDate = new Date();
-    const monthsAgo = (currentDate.getFullYear() - expenseDate.getFullYear()) * 12 + 
-                     (currentDate.getMonth() - expenseDate.getMonth());
+    const monthKeyStr = monthKey(expenseDate);
+    const monthStr = monthKeyStr.split('-')[1];
     
-    // Calculate total monthly expenses with variation for recent months
+    // Calculate total monthly expenses with variation for specific months
     let monthlyExpenseBudget: number;
     
-    if (monthsAgo === 0) {
-      // Current month - higher expenses (deficit month) - 95% of income
+    if (monthStr === '07') { // July
+      // Deficit month - higher expenses - 95% of income
       monthlyExpenseBudget = faker.number.int({ 
         min: Math.round(expectedMonthlyIncome * 0.92), 
         max: Math.round(expectedMonthlyIncome * 0.98) 
       }); // ₹1.00-1.07 crore
-    } else if (monthsAgo === 1) {
-      // Last month - normal expenses - 85% of income
+    } else if (monthStr === '08') { // August
+      // Surplus month - lower expenses - 75% of income
       monthlyExpenseBudget = faker.number.int({ 
-        min: Math.round(baseMonthlyExpense * 0.95), 
-        max: Math.round(baseMonthlyExpense * 1.05) 
-      }); // ₹87.9-97.1 lakhs
+        min: Math.round(expectedMonthlyIncome * 0.72), 
+        max: Math.round(expectedMonthlyIncome * 0.78) 
+      }); // ₹78.5-85.0 lakhs
+    } else if (monthStr === '06') { // June
+      // Surplus month - lower expenses - 78% of income
+      monthlyExpenseBudget = faker.number.int({ 
+        min: Math.round(expectedMonthlyIncome * 0.75), 
+        max: Math.round(expectedMonthlyIncome * 0.81) 
+      }); // ₹81.8-88.3 lakhs
     } else {
-      // Two months ago - slightly lower expenses - 82% of income
+      // Default for other months - 85% of income
       monthlyExpenseBudget = faker.number.int({ 
-        min: Math.round(expectedMonthlyIncome * 0.80), 
-        max: Math.round(expectedMonthlyIncome * 0.85) 
-      }); // ₹87.2-92.7 lakhs
+        min: Math.round(expectedMonthlyIncome * 0.82), 
+        max: Math.round(expectedMonthlyIncome * 0.88) 
+      });
     }
     
     // Generate expenses for each category with realistic proportions
